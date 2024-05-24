@@ -1,0 +1,10 @@
+data
+data.zip
+__pycache__
+.venv
+wandb
+slurm_log
+job_hist.log
+models
+Xvfb.log
+profiler
