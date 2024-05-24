@@ -47,15 +47,15 @@ preprocessing:
 predictor:
   type: lstm  # Options: 'lstm', 'fixed_input_nn'
   input_size: 1  # Input size for the LSTM predictor.
-  hidden_size: 16  # Hidden size for the LSTM or Fixed Input NN predictor.
+  hidden_size: 8 # 16  # Hidden size for the LSTM or Fixed Input NN predictor.
   num_layers: 2  # Number of layers for the LSTM predictor.
   fixed_input_size: 10  # Input size for the Fixed Input NN predictor. Only used if type is 'fixed_input_nn'.
 
 training:
-  epochs: 10  # Number of training epochs.
+  epochs: 128  # Number of training epochs.
   batch_size: 8  # Batch size for training.
   learning_rate: 0.001  # Learning rate for the optimizer.
-  eval_freq: 2  # Frequency of evaluation during training (in epochs).
+  eval_freq: 8  # Frequency of evaluation during training (in epochs).
   save_path: models  # Directory to save the best model and encoder.
   num_points: 1000  # Number of data points to visualize
 
@@ -69,3 +69,11 @@ data:
 
 profiler:
   enable: false
+
+ablative:
+  training:
+    learning_rate: [0.01, 0.0001, 0.00001]
+    batch_size: [4, 16]
+  predictor:
+    hidden_size: [4, 16]
+    num_layers: [1, 3]

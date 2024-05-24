@@ -35,13 +35,12 @@ def delta_encode(data):
     """Apply delta encoding to the data."""
     deltas = [data[0]]
     for i in range(1, len(data)):
-        delta = np.subtract(data[i], data[i - 1], dtype=np.float32)  # Using numpy subtract to handle overflow
-        deltas.append(delta)
-    return deltas
+        deltas.append(data[i] - data[i - 1])
+    return np.array(deltas)
 
 def delta_decode(deltas):
     """Decode delta encoded data."""
     data = [deltas[0]]
     for i in range(1, len(deltas)):
         data.append(data[-1] + deltas[i])
-    return data
+    return np.array(data)

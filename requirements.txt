@@ -5,3 +5,6 @@ matplotlib
 wandb
 pyyaml
 arithmetic_compressor
+pycallgraph2
+setuptools
+wheel

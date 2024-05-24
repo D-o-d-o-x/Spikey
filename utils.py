@@ -14,7 +14,7 @@ def visualize_wav_data(sample_rate, data, title="WAV Data", num_points=None):
     plt.ylabel('Amplitude')
     plt.show()
 
-def visualize_prediction(true_data, predicted_data, delta_data, sample_rate, num_points=None):
+def visualize_prediction(true_data, predicted_data, delta_data, sample_rate, num_points=None, epoch=None):
     """Visualize the true data, predicted data, and deltas."""
     if num_points:
         true_data = true_data[:num_points]
@@ -46,7 +46,7 @@ def visualize_prediction(true_data, predicted_data, delta_data, sample_rate, num
     file_path = os.path.join(tmp_dir, f'prediction_plot_{np.random.randint(1e6)}.png')
     plt.savefig(file_path)
     plt.close()
-    wandb.log({"Prediction vs True Data": wandb.Image(file_path)})
+    wandb.log({"Prediction vs True Data": wandb.Image(file_path)}, step=epoch)
 
 def plot_delta_distribution(deltas, epoch):
     """Plot the distribution of deltas."""
