@@ -18,40 +18,6 @@ pip install -r requirements.txt
 
 ## Usage
 
-### Configuration
-
-The configuration for training and evaluation is specified in a YAML file. Below is an example configuration:
-
-```yaml
-name: Test
-
-preprocessing:
-  use_delta_encoding: true # Whether to use delta encoding.
-
-predictor:
-  type: lstm # Options: 'lstm', 'fixed_input_nn'
-  input_size: 1 # Input size for the LSTM predictor.
-  hidden_size: 128 # Hidden size for the LSTM or Fixed Input NN predictor.
-  num_layers: 2 # Number of layers for the LSTM predictor.
-  fixed_input_size: 10 # Input size for the Fixed Input NN predictor. Only used if type is 'fixed_input_nn'.
-
-training:
-  epochs: 10 # Number of training epochs.
-  batch_size: 32 # Batch size for training.
-  learning_rate: 0.001 # Learning rate for the optimizer.
-  eval_freq: 2 # Frequency of evaluation during training (in epochs).
-  save_path: models # Directory to save the best model and encoder.
-  num_points: 1000 # Number of data points to visualize.
-
-bitstream_encoding:
-  type: arithmetic # Use arithmetic encoding.
-
-data:
-  url: https://content.neuralink.com/compression-challenge/data.zip # URL to download the dataset.
-  directory: data # Directory to extract and store the dataset.
-  split_ratio: 0.8 # Ratio to split the data into train and test sets.
-```
-
 ### Running the Code
 
 To train the model and compress/decompress WAV files, use the CLI provided:

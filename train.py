@@ -10,17 +10,17 @@ from data_processing import delta_encode, delta_decode, save_wav
 from utils import visualize_prediction, plot_delta_distribution
 from bitstream import ArithmeticEncoder
 
-def evaluate_model(model, data, use_delta_encoding, encoder, sample_rate=19531, epoch=0, num_points=None):
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+def evaluate_model(model, data, use_delta_encoding, encoder, sample_rate=19531, epoch=0):
     compression_ratios = []
     identical_count = 0
     all_deltas = []
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model.to(device)
-
+    model.eval()
     for file_data in data:
         file_data = torch.tensor(file_data, dtype=torch.float32).unsqueeze(1).to(device)
-        encoded_data = model(file_data).squeeze(1).cpu().detach().numpy().tolist()
+        encoded_data = model.encode(file_data.squeeze(1).cpu().numpy())
         encoder.build_model(encoded_data)
         compressed_data = encoder.encode(encoded_data)
         decompressed_data = encoder.decode(compressed_data, len(encoded_data))
@@ -36,14 +36,14 @@ def evaluate_model(model, data, use_delta_encoding, encoder, sample_rate=19531, 
         compression_ratios.append(compression_ratio)
         
         # Compute and collect deltas
-        predicted_data = model(torch.tensor(encoded_data, dtype=torch.float32).unsqueeze(1).to(device)).squeeze(1).cpu().detach().numpy().tolist()
+        predicted_data = model.decode(encoded_data)
         if use_delta_encoding:
             predicted_data = delta_decode(predicted_data)
         delta_data = [file_data[i].item() - predicted_data[i] for i in range(len(file_data))]
         all_deltas.extend(delta_data)
         
         # Visualize prediction vs data vs error
-        visualize_prediction(file_data.cpu().numpy(), predicted_data, delta_data, sample_rate, num_points)
+        visualize_prediction(file_data.cpu().numpy(), predicted_data, delta_data, sample_rate)
 
     identical_percentage = (identical_count / len(data)) * 100
     
@@ -53,22 +53,24 @@ def evaluate_model(model, data, use_delta_encoding, encoder, sample_rate=19531, 
     
     return compression_ratios, identical_percentage
 
-def train_model(model, train_data, test_data, epochs, batch_size, learning_rate, use_delta_encoding, encoder, eval_freq, save_path, num_points=None):
+def train_model(model, train_data, test_data, epochs, batch_size, learning_rate, use_delta_encoding, encoder, eval_freq, save_path):
     """Train the model."""
     wandb.init(project="wav-compression")
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     best_test_score = float('inf')
-
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model.to(device)
+    model = model.to(device)
     
     for epoch in range(epochs):
+        model.train()
         total_loss = 0
         random.shuffle(train_data)  # Shuffle data for varied batches
         for i in range(0, len(train_data) - batch_size, batch_size):
-            inputs = torch.tensor(train_data[i:i+batch_size], dtype=torch.float32).unsqueeze(2).to(device)
-            targets = torch.tensor(train_data[i+1:i+batch_size+1], dtype=torch.float32).unsqueeze(2).to(device)
+            batch = train_data[i:i+batch_size]
+            max_len = max(len(seq) for seq in batch)
+            padded_batch = np.array([np.pad(seq, (0, max_len - len(seq))) for seq in batch], dtype=np.float32)
+            inputs = torch.tensor(padded_batch[:, :-1], dtype=torch.float32).unsqueeze(2).to(device)
+            targets = torch.tensor(padded_batch[:, 1:], dtype=torch.float32).unsqueeze(2).to(device)
             outputs = model(inputs)
             loss = criterion(outputs, targets)
             optimizer.zero_grad()
@@ -81,8 +83,8 @@ def train_model(model, train_data, test_data, epochs, batch_size, learning_rate,
         
         if (epoch + 1) % eval_freq == 0:
             # Evaluate on train and test data
-            train_compression_ratios, train_identical_percentage = evaluate_model(model, train_data, use_delta_encoding, encoder, epoch=epoch, num_points=num_points)
-            test_compression_ratios, test_identical_percentage = evaluate_model(model, test_data, use_delta_encoding, encoder, epoch=epoch, num_points=num_points)
+            train_compression_ratios, train_identical_percentage = evaluate_model(model, train_data, use_delta_encoding, encoder, epoch=epoch)
+            test_compression_ratios, test_identical_percentage = evaluate_model(model, test_data, use_delta_encoding, encoder, epoch=epoch)
             
             # Log statistics
             wandb.log({

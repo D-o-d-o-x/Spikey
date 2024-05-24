@@ -1,8 +1,8 @@
-import os
 import numpy as np
 from scipy.io import wavfile
 import urllib.request
 import zipfile
+import os
 
 def download_and_extract_data(url, data_dir):
     if not os.path.exists(data_dir):
@@ -35,7 +35,8 @@ def delta_encode(data):
     """Apply delta encoding to the data."""
     deltas = [data[0]]
     for i in range(1, len(data)):
-        deltas.append(data[i] - data[i - 1])
+        delta = np.subtract(data[i], data[i - 1], dtype=np.float32)  # Using numpy subtract to handle overflow
+        deltas.append(delta)
     return deltas
 
 def delta_decode(deltas):

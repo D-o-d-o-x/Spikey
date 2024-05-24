@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 from abc import ABC, abstractmethod
 
-class BaseModel(ABC, nn.Module):
+class BaseModel(nn.Module, ABC):
     def __init__(self):
-        super().__init__()
+        super(BaseModel, self).__init__()
 
     @abstractmethod
     def forward(self, x):
@@ -23,12 +23,10 @@ class LSTMPredictor(BaseModel):
         super(LSTMPredictor, self).__init__()
         self.rnn = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
         self.fc = nn.Linear(hidden_size, 1)
-        self.hidden_size = hidden_size
-        self.num_layers = num_layers
 
     def forward(self, x):
-        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
-        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
+        h0 = torch.zeros(self.rnn.num_layers, x.size(0), self.rnn.hidden_size).to(x.device)
+        c0 = torch.zeros(self.rnn.num_layers, x.size(0), self.rnn.hidden_size).to(x.device)
         out, _ = self.rnn(x, (h0, c0))
         out = self.fc(out)
         return out
@@ -39,8 +37,10 @@ class LSTMPredictor(BaseModel):
 
         with torch.no_grad():
             for i in range(len(data) - 1):
-                context = torch.tensor(data[max(0, i - self.hidden_size):i]).view(1, -1, 1).float()
-                prediction = self.forward(context).item()
+                context = torch.tensor(data[max(0, i - self.rnn.hidden_size):i], dtype=torch.float32).unsqueeze(0).unsqueeze(2).to(next(self.parameters()).device)
+                if context.shape[1] == 0:
+                    context = torch.zeros((1, 1, 1)).to(next(self.parameters()).device)
+                prediction = self.forward(context).cpu().numpy()[0][0]
                 delta = data[i] - prediction
                 encoded_data.append(delta)
         
@@ -52,8 +52,10 @@ class LSTMPredictor(BaseModel):
 
         with torch.no_grad():
             for i in range(len(encoded_data)):
-                context = torch.tensor(decoded_data[max(0, i - self.hidden_size):i]).view(1, -1, 1).float()
-                prediction = self.forward(context).item()
+                context = torch.tensor(decoded_data[max(0, i - self.rnn.hidden_size):i], dtype=torch.float32).unsqueeze(0).unsqueeze(2).to(next(self.parameters()).device)
+                if context.shape[1] == 0:
+                    context = torch.zeros((1, 1, 1)).to(next(self.parameters()).device)
+                prediction = self.forward(context).cpu().numpy()[0][0]
                 decoded_data.append(prediction + encoded_data[i])
         
         return decoded_data
@@ -64,7 +66,6 @@ class FixedInputNNPredictor(BaseModel):
         self.fc1 = nn.Linear(input_size, hidden_size)
         self.relu = nn.ReLU()
         self.fc2 = nn.Linear(hidden_size, 1)
-        self.input_size = input_size
 
     def forward(self, x):
         x = self.fc1(x)
@@ -77,10 +78,10 @@ class FixedInputNNPredictor(BaseModel):
         encoded_data = []
 
         with torch.no_grad():
-            for i in range(len(data) - self.input_size):
-                context = torch.tensor(data[i:i + self.input_size]).view(1, -1).float()
-                prediction = self.forward(context).item()
-                delta = data[i + self.input_size] - prediction
+            for i in range(len(data) - self.fc1.in_features):
+                context = torch.tensor(data[i:i + self.fc1.in_features], dtype=torch.float32).unsqueeze(0).to(next(self.parameters()).device)
+                prediction = self.forward(context).cpu().numpy()[0][0]
+                delta = data[i + self.fc1.in_features] - prediction
                 encoded_data.append(delta)
         
         return encoded_data
@@ -91,8 +92,8 @@ class FixedInputNNPredictor(BaseModel):
 
         with torch.no_grad():
             for i in range(len(encoded_data)):
-                context = torch.tensor(decoded_data[max(0, i - self.input_size):i]).view(1, -1).float()
-                prediction = self.forward(context).item()
+                context = torch.tensor(decoded_data[max(0, i - self.fc1.in_features):i], dtype=torch.float32).unsqueeze(0).to(next(self.parameters()).device)
+                prediction = self.forward(context).cpu().numpy()[0][0]
                 decoded_data.append(prediction + encoded_data[i])
         
         return decoded_data

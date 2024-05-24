@@ -4,3 +4,4 @@ scipy
 matplotlib
 wandb
 pyyaml
+arithmetic_compressor
