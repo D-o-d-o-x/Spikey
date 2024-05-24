@@ -8,8 +8,8 @@ slurm:
   standard_output: ./reports/slurm/out_%A_%a.log
   standard_error: ./reports/slurm/err_%A_%a.log
   num_parallel_jobs: 50
-  cpus_per_task: 4
-  memory_per_cpu: 1000
+  cpus_per_task: 8
+  memory_per_cpu: 4000
   time_limit: 1440  # in minutes
   ntasks: 1
   venv: '.venv/bin/activate'
