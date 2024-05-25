@@ -42,21 +42,21 @@ name: Test
 import: $
 
 latent_projector:
-  type: fc  # Options: 'fc', 'rnn'
-  input_size: 50  # Input size for the Latent Projector (length of snippets).
+  type: rnn  # Options: 'fc', 'rnn'
+  input_size: 19531  # =1s Input size for the Latent Projector (length of snippets).
   latent_size: 8  # Size of the latent representation before message passing.
-  layer_shapes: [16, 32]  # List of layer sizes for the latent projector (if type is 'fc').
+  layer_shapes: [256, 32]  # List of layer sizes for the latent projector (if type is 'fc').
   activations: ['relu', 'relu']  # Activation functions for the latent projector layers (if type is 'fc').
-  rnn_hidden_size: 32  # Hidden size for the RNN projector (if type is 'rnn').
+  rnn_hidden_size: 16  # Hidden size for the RNN projector (if type is 'rnn').
   rnn_num_layers: 2  # Number of layers for the RNN projector (if type is 'rnn').
 
 middle_out:
-  output_size: 16  # Size of the latent representation after message passing.
-  num_peers: 3  # Number of most correlated peers to consider.
+  output_size: 8  # Size of the latent representation after message passing.
+  num_peers: 8  # Number of most correlated peers to consider.
 
 predictor:
-  layer_shapes: [32, 16]  # List of layer sizes for the predictor.
-  activations: ['relu', 'relu']  # Activation functions for the predictor layers.
+  layer_shapes: [8, 4]  # List of layer sizes for the predictor.
+  activations: ['relu', 'none']  # Activation functions for the predictor layers.
 
 training:
   epochs: 128  # Number of training epochs.
@@ -70,7 +70,7 @@ evaluation:
   full_compression: false  # Perform full compression during evaluation
 
 bitstream_encoding:
-  type: identity  # Options: 'arithmetic', 'no_compression', 'bzip2'
+  type: identity  # Options: 'arithmetic', 'identity', 'bzip2'
 
 data:
   url: https://content.neuralink.com/compression-challenge/data.zip  # URL to download the dataset.
