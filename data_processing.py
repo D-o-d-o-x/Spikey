@@ -14,33 +14,33 @@ def download_and_extract_data(url, data_dir):
         os.remove(zip_path)
 
 def load_wav(file_path):
-    """Load WAV file and return sample rate and data."""
     sample_rate, data = wavfile.read(file_path)
     return sample_rate, data
 
-def load_all_wavs(data_dir):
-    """Load all WAV files in the given directory."""
+def load_all_wavs(data_dir, cut_length=None):
     wav_files = [os.path.join(data_dir, f) for f in os.listdir(data_dir) if f.endswith('.wav')]
     all_data = []
     for file_path in wav_files:
         _, data = load_wav(file_path)
+        if cut_length:
+            data = data[:cut_length]
         all_data.append(data)
     return all_data
 
-def save_wav(file_path, sample_rate, data):
-    """Save data to a WAV file."""
-    wavfile.write(file_path, sample_rate, np.asarray(data, dtype=np.float32))
+def compute_correlation_matrix(data):
+    num_leads = len(data)
+    corr_matrix = np.zeros((num_leads, num_leads))
+    for i in range(num_leads):
+        for j in range(num_leads):
+            if i != j:
+                corr_matrix[i, j] = np.corrcoef(data[i], data[j])[0, 1]
+    return corr_matrix
 
-def delta_encode(data):
-    """Apply delta encoding to the data."""
-    deltas = [data[0]]
-    for i in range(1, len(data)):
-        deltas.append(data[i] - data[i - 1])
-    return np.array(deltas)
-
-def delta_decode(deltas):
-    """Decode delta encoded data."""
-    data = [deltas[0]]
-    for i in range(1, len(deltas)):
-        data.append(data[-1] + deltas[i])
-    return np.array(data)
+def split_data_by_time(data, split_ratio=0.5):
+    train_data = []
+    test_data = []
+    for lead in data:
+        split_idx = int(len(lead) * split_ratio)
+        train_data.append(lead[:split_idx])
+        test_data.append(lead[split_idx:])
+    return train_data, test_data

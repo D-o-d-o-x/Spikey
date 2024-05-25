@@ -41,15 +41,22 @@ wandb:
 name: Test
 import: $
 
-preprocessing:
-  use_delta_encoding: false  # Whether to use delta encoding.
+latent_projector:
+  type: fc  # Options: 'fc', 'rnn'
+  input_size: 50  # Input size for the Latent Projector (length of snippets).
+  latent_size: 8  # Size of the latent representation before message passing.
+  layer_shapes: [16, 32]  # List of layer sizes for the latent projector (if type is 'fc').
+  activations: ['relu', 'relu']  # Activation functions for the latent projector layers (if type is 'fc').
+  rnn_hidden_size: 32  # Hidden size for the RNN projector (if type is 'rnn').
+  rnn_num_layers: 2  # Number of layers for the RNN projector (if type is 'rnn').
+
+middle_out:
+  output_size: 16  # Size of the latent representation after message passing.
+  num_peers: 3  # Number of most correlated peers to consider.
 
 predictor:
-  type: lstm  # Options: 'lstm', 'fixed_input_nn'
-  input_size: 1  # Input size for the LSTM predictor.
-  hidden_size: 8 # 16  # Hidden size for the LSTM or Fixed Input NN predictor.
-  num_layers: 2  # Number of layers for the LSTM predictor.
-  fixed_input_size: 10  # Input size for the Fixed Input NN predictor. Only used if type is 'fixed_input_nn'.
+  layer_shapes: [32, 16]  # List of layer sizes for the predictor.
+  activations: ['relu', 'relu']  # Activation functions for the predictor layers.
 
 training:
   epochs: 128  # Number of training epochs.
@@ -59,6 +66,9 @@ training:
   save_path: models  # Directory to save the best model and encoder.
   num_points: 1000  # Number of data points to visualize
 
+evaluation:
+  full_compression: false  # Perform full compression during evaluation
+
 bitstream_encoding:
   type: identity  # Options: 'arithmetic', 'no_compression', 'bzip2'
 
@@ -66,14 +76,7 @@ data:
   url: https://content.neuralink.com/compression-challenge/data.zip  # URL to download the dataset.
   directory: data  # Directory to extract and store the dataset.
   split_ratio: 0.8  # Ratio to split the data into train and test sets.
+  cut_length: None  # Optional length to cut sequences to.
 
 profiler:
   enable: false
-
-ablative:
-  training:
-    learning_rate: [0.01, 0.0001, 0.00001]
-    batch_size: [4, 16]
-  predictor:
-    hidden_size: [4, 16]
-    num_layers: [1, 3]
