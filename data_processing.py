@@ -35,6 +35,7 @@ def compute_correlation_matrix(data):
     trimmed_data = [d[:min_length] for d in data]
 
     corr_matrix = np.corrcoef(trimmed_data)
+    np.fill_diagonal(corr_matrix, 0)
     return corr_matrix
 
 def split_data_by_time(data, split_ratio=0.5):
