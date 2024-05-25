@@ -63,7 +63,7 @@ training:
   batch_size: 64  # Batch size for training.
   num_batches: 16 # Batches per epoch
   learning_rate: 0.001  # Learning rate for the optimizer.
-  eval_freq: 8  # Frequency of evaluation during training (in epochs).
+  eval_freq: -1 # 8  # Frequency of evaluation during training (in epochs).
   save_path: models  # Directory to save the best model and encoder.
   num_points: 1000  # Number of data points to visualize
 

@@ -190,7 +190,7 @@ class SpikeRunner(Slate_Runner):
         total_sequences = 0
 
         with torch.no_grad():
-            for lead_idx in range(len(self.test_data)):
+            for lead_idx in range(len(self.test_data[:8])):
                 lead_data = self.test_data[lead_idx]
                 true_data = []
                 predicted_data = []
@@ -238,10 +238,10 @@ class SpikeRunner(Slate_Runner):
                     for t in range(self.input_size):
                         target = torch.tensor(targets[i])
                         true_data.append(target.cpu().numpy())
-                        predicted_data.append(predictions[i, t, :].cpu().numpy())
-                        delta_data.append((target - predictions[i, t, :]).cpu().numpy())
+                        predicted_data.append(predictions[i].cpu().numpy())
+                        delta_data.append((target - predictions[i]).cpu().numpy())
 
-                        loss = self.criterion(predictions[i, t, :], target)
+                        loss = self.criterion(predictions[i].cpu(), target)
                         total_loss += loss.item()
 
                 # Append true and predicted data for this lead sequence
@@ -283,6 +283,7 @@ class SpikeRunner(Slate_Runner):
 
 
     def save_models(self, epoch):
+        return
         print('Saving models...')
         torch.save(self.projector.state_dict(), os.path.join(self.save_path, f"best_projector_epoch_{epoch+1}.pt"))
         torch.save(self.middle_out.state_dict(), os.path.join(self.save_path, f"best_middle_out_epoch_{epoch+1}.pt"))

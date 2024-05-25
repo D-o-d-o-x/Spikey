@@ -24,6 +24,13 @@ By accurately predicting the next timestep, the delta (difference) between the a
 
 The neural networks used in this solution are tiny, making it possible to meet the latency and power requirements if implemented more efficiently.
 
+## TODO
+
+- All currently implemented bitstream encoders are rather naive. We know, that lead values from the N1 only have 10 bit precision, but wav file provides yus with 32bit floats. All my bitstream encoders are also based on 32bit floats, discretizing back into the 10 bit space would be a low hanging fruit for ~3.2x compression.
+- Since we merely encode the remaining delta, we can go even more efficient by constructing something along the lines of a huffman tree.
+- Loss is not coming down during training...
+- Make a logo
+
 ## Installation
 
 To install the necessary dependencies, create a virtual environment and install the requirements:
