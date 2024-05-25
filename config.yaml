@@ -43,29 +43,28 @@ import: $
 
 latent_projector:
   type: rnn  # Options: 'fc', 'rnn'
-  input_size: 19531  # =1s Input size for the Latent Projector (length of snippets).
-  latent_size: 8  # Size of the latent representation before message passing.
+  input_size: 195 # =0.01s 19531  # =1s Input size for the Latent Projector (length of snippets).
+  latent_size: 4  # Size of the latent representation before message passing.
   #layer_shapes: [256, 32]  # List of layer sizes for the latent projector (if type is 'fc').
   #activations: ['ReLU', 'ReLU']  # Activation functions for the latent projector layers (if type is 'fc').
-  rnn_hidden_size: 12  # Hidden size for the RNN projector (if type is 'rnn').
+  rnn_hidden_size: 4  # Hidden size for the RNN projector (if type is 'rnn').
   rnn_num_layers: 1  # Number of layers for the RNN projector (if type is 'rnn').
 
 middle_out:
-  output_size: 8  # Size of the latent representation after message passing.
+  output_size: 4  # Size of the latent representation after message passing.
   num_peers: 3  # Number of most correlated peers to consider.
 
 predictor:
-  layer_shapes: [8, 4]  # List of layer sizes for the predictor.
-  activations: ['ReLU', 'None']  # Activation functions for the predictor layers.
+  layer_shapes: [4]  # List of layer sizes for the predictor.
+  activations: ['ELU']  # Activation functions for the predictor layers.
 
 training:
-  epochs: 128  # Number of training epochs.
-  batch_size: 64  # Batch size for training.
-  num_batches: 16 # Batches per epoch
-  learning_rate: 0.001  # Learning rate for the optimizer.
+  epochs: 1024  # Number of training epochs.
+  batch_size: 16 # 64  # Batch size for training.
+  num_batches: 4 # Batches per epoch
+  learning_rate: 0.05  # Learning rate for the optimizer.
   eval_freq: -1 # 8  # Frequency of evaluation during training (in epochs).
   save_path: models  # Directory to save the best model and encoder.
-  num_points: 1000  # Number of data points to visualize
 
 evaluation:
   full_compression: false  # Perform full compression during evaluation
