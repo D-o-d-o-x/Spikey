@@ -37,8 +37,9 @@ class LatentRNNProjector(nn.Module):
         self.latent_size = latent_size
 
     def forward(self, x):
-        out, _ = self.rnn(x)
-        latent = self.fc(out)
+        batch_1, batch_2, timesteps = x.size()
+        out, _ = self.rnn(x.view(batch_1 * batch_2, timesteps))
+        latent = self.fc(out).view(batch_1, batch_2, self.latent_size)
         return latent
 
 class MiddleOut(nn.Module):
@@ -57,7 +58,7 @@ class MiddleOut(nn.Module):
         
         new_latents = torch.stack(new_latents)
         averaged_latent = torch.mean(new_latents, dim=0)
-        return my_latent - averaged_latent
+        return averaged_latent
 
 class Predictor(nn.Module):
     def __init__(self, output_size, layer_shapes, activations):
