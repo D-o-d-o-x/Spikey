@@ -22,10 +22,9 @@ class SpikeRunner:
         data_config = slate.consume(config, 'data', expand=True)
 
         data_url = slate.consume(data_config, 'url')
-        data_dir = slate.consume(data_config, 'directory')
         cut_length = slate.consume(data_config, 'cut_length', None)
-        download_and_extract_data(data_url, data_dir)
-        all_data = load_all_wavs(data_dir, cut_length)
+        download_and_extract_data(data_url)
+        all_data = load_all_wavs('data', cut_length)
 
         split_ratio = slate.consume(data_config, 'split_ratio', 0.5)
         self.train_data, self.test_data = split_data_by_time(all_data, split_ratio)

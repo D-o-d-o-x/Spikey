@@ -4,13 +4,12 @@ import urllib.request
 import zipfile
 import os
 
-def download_and_extract_data(url, data_dir):
-    if not os.path.exists(data_dir):
-        os.makedirs(data_dir)
-        zip_path = os.path.join(data_dir, 'data.zip')
+def download_and_extract_data(url):
+    if not os.path.exists('data'):
+        zip_path = os.path.join('.', 'data.zip')
         urllib.request.urlretrieve(url, zip_path)
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(data_dir)
+            zip_ref.extractall('.')
         os.remove(zip_path)
 
 def load_wav(file_path):
