@@ -21,18 +21,20 @@ def load_all_wavs(data_dir, cut_length=None):
     all_data = []
     for file_path in wav_files:
         _, data = load_wav(file_path)
-        if cut_length:
+        if cut_length is not None:
+            print(cut_length)
             data = data[:cut_length]
         all_data.append(data)
     return all_data
 
 def compute_correlation_matrix(data):
     num_leads = len(data)
-    corr_matrix = np.zeros((num_leads, num_leads))
-    for i in range(num_leads):
-        for j in range(num_leads):
-            if i != j:
-                corr_matrix[i, j] = np.corrcoef(data[i], data[j])[0, 1]
+    min_length = min(len(d) for d in data)
+    
+    # Trim all leads to the minimum length
+    trimmed_data = [d[:min_length] for d in data]
+
+    corr_matrix = np.corrcoef(trimmed_data)
     return corr_matrix
 
 def split_data_by_time(data, split_ratio=0.5):

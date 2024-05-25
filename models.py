@@ -49,8 +49,9 @@ class MiddleOut(nn.Module):
 
     def forward(self, my_latent, peer_latents, peer_correlations):
         new_latents = []
-        for peer_latent, correlation in zip(peer_latents, peer_correlations):
-            combined_input = torch.cat((my_latent, peer_latent, correlation), dim=-1)
+        for p in range(peer_latents.shape[-2]):
+            peer_latent, correlation = peer_latents[:, p, :], peer_correlations[:, p]
+            combined_input = torch.cat((my_latent, peer_latent, correlation.unsqueeze(1)), dim=-1)
             new_latent = self.fc(combined_input)
             new_latents.append(new_latent)
         
