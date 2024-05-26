@@ -80,10 +80,13 @@ class LatentFourierProjector(nn.Module):
         return latent
 
 class MiddleOut(nn.Module):
-    def __init__(self, latent_size, region_latent_size, num_peers):
+    def __init__(self, latent_size, region_latent_size, num_peers, residual=False):
         super(MiddleOut, self).__init__()
+        if residual:
+            assert latent_size == region_latent_size
         self.num_peers = num_peers
         self.fc = nn.Linear(latent_size * 2 + 1, region_latent_size)
+        self.residual = residual
 
     def forward(self, my_latent, peer_latents, peer_metrics):
         new_latents = []
@@ -95,6 +98,8 @@ class MiddleOut(nn.Module):
         
         new_latents = torch.stack(new_latents)
         averaged_latent = torch.mean(new_latents, dim=0)
+        if self.residual:
+            return my_latent - averaged_latent
         return averaged_latent
 
 class Predictor(nn.Module):

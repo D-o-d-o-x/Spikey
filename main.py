@@ -68,6 +68,7 @@ class SpikeRunner(Slate_Runner):
         self.learning_rate = slate.consume(training_config, 'learning_rate')
         self.eval_freq = slate.consume(training_config, 'eval_freq')
         self.save_path = slate.consume(training_config, 'save_path')
+        self.peer_gradients = slate.consume(training_config, 'peer_gradients')
 
         # Evaluation parameter
         self.full_compression = slate.consume(config, 'evaluation.full_compression', default=False)
@@ -143,6 +144,8 @@ class SpikeRunner(Slate_Runner):
 
                 my_latent = latents[:, 0, :]
                 peer_latents = latents[:, 1:, :]
+                if not self.peer_gradients:
+                    peer_latents = peer_latents.detach()
 
                 # Pass through MiddleOut
                 new_latent = self.middle_out(my_latent, peer_latents, torch.stack(peer_metrics))
