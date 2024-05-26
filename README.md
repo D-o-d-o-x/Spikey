@@ -1,3 +1,7 @@
+<p align='center'>
+  <img src='./spikey.svg'>
+</p>
+
 # Spikey
 
 This repository contains a solution for the [Neuralink Compression Challenge](https://content.neuralink.com/compression-challenge/README.html). The challenge involves compressing raw electrode recordings from a Neuralink implant. These recordings are taken from the motor cortex of a non-human primate while playing a video game.
@@ -65,6 +69,6 @@ pip install -e git+ssh://git@dominik-roth.eu/dodox/Slate.git#egg=slate
 
 To train the model, run:
 
-```bash
+```calibash
 python main.py <config_file.yaml> <exp_name>
 ```
