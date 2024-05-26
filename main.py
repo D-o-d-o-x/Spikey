@@ -4,7 +4,7 @@ import torch.nn as nn
 import numpy as np
 import random, math
 from utils import visualize_prediction, plot_delta_distribution
-from data_processing import download_and_extract_data, load_all_wavs, split_data_by_time, compute_correlation_matrix
+from data_processing import download_and_extract_data, load_all_wavs, split_data_by_time, compute_topology_metrics
 from models import LatentProjector, LatentRNNProjector, MiddleOut, Predictor
 from bitstream import IdentityEncoder, ArithmeticEncoder, Bzip2Encoder
 import wandb
@@ -33,16 +33,15 @@ class SpikeRunner(Slate_Runner):
         split_ratio = slate.consume(data_config, 'split_ratio', 0.5)
         self.train_data, self.test_data = split_data_by_time(all_data, split_ratio)
 
-        # Compute correlation matrix
-        print("Computing correlation matrix")
-        self.correlation_matrix = compute_correlation_matrix(self.train_data)
+        print("Reconstructing thread topology")
+        self.topology_matrix = compute_topology_metrics(self.train_data)
 
         # Number of peers for message passing
         self.num_peers = slate.consume(config, 'middle_out.num_peers')
 
         # Precompute sorted indices for the top num_peers correlated leads
         print("Precomputing sorted peer indices")
-        self.sorted_peer_indices = np.argsort(-self.correlation_matrix, axis=1)[:, :self.num_peers]
+        self.sorted_peer_indices = np.argsort(-self.topology_matrix, axis=1)[:, :self.num_peers]
 
         # Model setup
         print("Setting up models")
@@ -111,7 +110,7 @@ class SpikeRunner(Slate_Runner):
                 random.shuffle(indices)
 
                 stacked_segments = []
-                peer_correlations = []
+                peer_metrics = []
                 targets = []
 
                 for idx in indices[:self.batch_size]:
@@ -128,8 +127,8 @@ class SpikeRunner(Slate_Runner):
                         for peer_idx in self.sorted_peer_indices[idx]:
                             peer_segment = self.train_data[peer_idx][i:i + self.input_size]
                             peer_segments.append(torch.tensor(peer_segment, dtype=torch.float32).to(device))
-                        peer_correlation = torch.tensor([self.correlation_matrix[idx, peer_idx] for peer_idx in self.sorted_peer_indices[idx]], dtype=torch.float32).to(device)
-                        peer_correlations.append(peer_correlation)
+                        peer_metric = torch.tensor([self.topology_matrix[idx, peer_idx] for peer_idx in self.sorted_peer_indices[idx]], dtype=torch.float32).to(device)
+                        peer_metrics.append(peer_metric)
 
                         # Stack the segments to form the batch
                         stacked_segment = torch.stack([inputs] + peer_segments).to(device)
@@ -144,7 +143,7 @@ class SpikeRunner(Slate_Runner):
                 peer_latents = latents[:, 1:, :]
 
                 # Pass through MiddleOut
-                new_latent = self.middle_out(my_latent, peer_latents, torch.stack(peer_correlations))
+                new_latent = self.middle_out(my_latent, peer_latents, torch.stack(peer_metrics))
                 prediction = self.predictor(new_latent)
 
                 # Calculate loss and backpropagate
@@ -209,21 +208,21 @@ class SpikeRunner(Slate_Runner):
 
                 min_length = min([len(seq) for seq in self.test_data])
 
-                # Initialize lists to store segments and peer correlations
+                # Initialize lists to store segments and peer metrics
                 stacked_segments = []
-                peer_correlations = []
+                peer_metrics = []
 
                 for i in range(0, len(lead_data) - self.input_size-1, self.input_size // 8):
                     lead_segment = lead_data[i:i + self.input_size]
                     inputs = torch.tensor(lead_segment, dtype=torch.float32).to(device)
 
-                    # Collect peer segments and correlations
+                    # Collect peer segments and metrics
                     peer_segments = []
                     for peer_idx in self.sorted_peer_indices[lead_idx]:
                         peer_segment = self.test_data[peer_idx][i:i + self.input_size][:min_length]
                         peer_segments.append(torch.tensor(peer_segment, dtype=torch.float32).to(device))
-                    peer_correlation = torch.tensor([self.correlation_matrix[lead_idx, peer_idx] for peer_idx in self.sorted_peer_indices[lead_idx]], dtype=torch.float32).to(device)
-                    peer_correlations.append(peer_correlation)
+                    peer_metric = torch.tensor([self.topology_matrix[lead_idx, peer_idx] for peer_idx in self.sorted_peer_indices[lead_idx]], dtype=torch.float32).to(device)
+                    peer_metrics.append(peer_metric)
 
                     # Stack segments to form the batch
                     stacked_segment = torch.stack([inputs] + peer_segments).to(device)
@@ -238,7 +237,7 @@ class SpikeRunner(Slate_Runner):
                 peer_latents = latents[:, 1:, :]
 
                 # Pass through MiddleOut
-                new_latents = self.middle_out(my_latents, peer_latents, torch.stack(peer_correlations))
+                new_latents = self.middle_out(my_latents, peer_latents, torch.stack(peer_metrics))
 
                 # Predict using the predictor
                 predictions = self.predictor(new_latents)

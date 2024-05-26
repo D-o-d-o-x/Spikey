@@ -48,13 +48,13 @@ class MiddleOut(nn.Module):
         self.num_peers = num_peers
         self.fc = nn.Linear(latent_size * 2 + 1, output_size)
 
-    def forward(self, my_latent, peer_latents, peer_correlations):
+    def forward(self, my_latent, peer_latents, peer_metrics):
         new_latents = []
         for p in range(peer_latents.shape[-2]):
-            peer_latent, correlation = peer_latents[:, p, :], peer_correlations[:, p]
-            combined_input = torch.cat((my_latent, peer_latent, correlation.unsqueeze(1)), dim=-1)
+            peer_latent, metric = peer_latents[:, p, :], peer_metrics[:, p]
+            combined_input = torch.cat((my_latent, peer_latent, metric.unsqueeze(1)), dim=-1)
             new_latent = self.fc(combined_input)
-            new_latents.append(new_latent * correlation.unsqueeze(1))
+            new_latents.append(new_latent * metric.unsqueeze(1))
         
         new_latents = torch.stack(new_latents)
         averaged_latent = torch.mean(new_latents, dim=0)

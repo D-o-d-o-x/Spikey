@@ -27,16 +27,16 @@ def load_all_wavs(data_dir, cut_length=None):
         all_data.append(data)
     return all_data
 
-def compute_correlation_matrix(data):
+def compute_topology_metrics(data):
     num_leads = len(data)
     min_length = min(len(d) for d in data)
     
     # Trim all leads to the minimum length
     trimmed_data = [d[:min_length] for d in data]
 
-    corr_matrix = np.corrcoef(trimmed_data)
-    np.fill_diagonal(corr_matrix, 0)
-    return corr_matrix
+    metric_matrix = np.corrcoef(trimmed_data)
+    np.fill_diagonal(metric_matrix, 0)
+    return metric_matrix
 
 def split_data_by_time(data, split_ratio=0.5):
     train_data = []
