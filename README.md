@@ -24,7 +24,7 @@ As the first step, we analyze readings from the leads to construct an approximat
 
 The main workhorse of our compression approach is a predictive model running both in the compressor and decompressor. With good predictions of the data, only the error between the prediction and actual data must be transmitted. We make use of the previously constructed topology to allow the predictive model's latent to represent the activity of brain regions based on the reading of the threads instead of just for threads themselves.
 
-The solution leverages three neural network models to achieve effective compression:
+We seperate the predictive model into three parts:
 
 1. **Latent Projector**: This module takes in a segment of a lead and projects it into a latent space. The latent projector can be configured as a fully connected network or an RNN (LSTM) with an arbitrary shape.
 
@@ -32,7 +32,7 @@ The solution leverages three neural network models to achieve effective compress
 
 3. **Predictor**: This module takes the new latent representation from the MiddleOut module and predicts the next timestep. The goal is to minimize the prediction error during training. It can be configured to be an FCNN of arbitrary shape.
 
-The neural networks used in this solution are rather small, making it possible to meet the latency and power requirements if implemented more efficiently.
+The neural networks used are rather small, making it possible to meet the latency and power requirements if implemented more efficiently.
 
 If we were to give up on lossless compression, one could expand MiddleOut to form a joint latent over all threads and transmit that.
 
