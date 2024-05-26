@@ -1,3 +1,51 @@
+name: EXAMPLE
+
+latent_projector:
+  type: fc  # Type of latent projector: 'fc', 'rnn', 'fourier'
+  input_size: 1953  # Input size for the Latent Projector (length of snippets).
+  latent_size: 4  # Size of the latent representation before message passing.
+  layer_shapes: [32, 8]  # List of layer sizes for the latent projector if type is 'fc' or 'fourier'.
+  activations: ['ReLU', 'ReLU']  # Activation functions for the latent projector layers if type is 'fc' or 'fourier'.
+  rnn_hidden_size: 4  # Hidden size for the RNN projector if type is 'rnn'.
+  rnn_num_layers: 1  # Number of layers for the RNN projector if type is 'rnn'.
+  num_frequencies: 16  # Number of frequency bins for the Fourier decomposition if type is 'fourier'.
+  pass_raw_len: 50  # Number of last samples to pass raw to the net in addition to frequencies (null = all) if type is 'fourier'.
+
+middle_out:
+  region_latent_size: 4  # Size of the latent representation after message passing.
+  residual: false # Wether to use a ResNet style setup. Requires region_latent_size = latent_size
+  num_peers: 3  # Number of closest peers to consider.
+
+predictor:
+  layer_shapes: [3]  # List of layer sizes for the predictor.
+  activations: ['ReLU']  # Activation functions for the predictor layers.
+
+training:
+  epochs: 1024  # Number of training epochs.
+  batch_size: 32  # Batch size for training.
+  num_batches: 1  # Number of batches per epoch.
+  learning_rate: 0.01  # Learning rate for the optimizer.
+  peer_gradients: true # Wether we allow gradients flow to the latent projector for peers. Leads to higher sample efficiency but also less stability.
+  eval_freq: -1  # Frequency of evaluation during training (in epochs).
+  save_path: models  # Directory to save the best model and encoder.
+
+evaluation:
+  full_compression: false  # Perform full compression during evaluation.
+
+bitstream_encoding:
+  type: identity  # Bitstream encoding type: 'arithmetic', 'identity', 'bzip2'.
+
+data:
+  url: https://content.neuralink.com/compression-challenge/data.zip  # URL to download the dataset.
+  directory: data  # Directory to extract and store the dataset.
+  split_ratio: 0.8  # Ratio to split the data into train and test sets.
+  cut_length: null  # Optional length to cut sequences to.
+
+profiler:
+  enable: false  # Enable profiler.
+
+---
+
 name: DEFAULT
 project: Spikey_1
 
@@ -38,100 +86,96 @@ wandb:
   save_code: False
 
 evaluation:
-  full_compression: false  # Perform full compression during evaluation
+  full_compression: false
 
 bitstream_encoding:
-  type: identity  # Options: 'arithmetic', 'identity', 'bzip2'
+  type: identity
 
 data:
-  url: https://content.neuralink.com/compression-challenge/data.zip  # URL to download the dataset.
-  directory: data  # Directory to extract and store the dataset.
-  split_ratio: 0.8  # Ratio to split the data into train and test sets.
-  cut_length: null  # Optional length to cut sequences to.
+  url: https://content.neuralink.com/compression-challenge/data.zip
+  directory: data
+  split_ratio: 0.8
+  cut_length: null
 
 profiler:
   enable: false
 
 training:
-  eval_freq: -1 # 8  # Frequency of evaluation during training (in epochs).
-  save_path: models  # Directory to save the best model and encoder.
+  eval_freq: -1 # 8
+  save_path: models
+  peer_gradients: True
+
+middle_out:
+  residual: False
 ---
 name: FC
 import: $
 
 latent_projector:
-  type: fc  # Options: 'fc', 'rnn'
-  input_size: 1953 # =0.1s 19531  # =1s Input size for the Latent Projector (length of snippets).
-  latent_size: 4  # Size of the latent representation before message passing.
-  layer_shapes: [32, 8]  # List of layer sizes for the latent projector (if type is 'fc').
-  activations: ['ReLU', 'ReLU']  # Activation functions for the latent projector layers (if type is 'fc').
-  #rnn_hidden_size: 4  # Hidden size for the RNN projector (if type is 'rnn').
-  #rnn_num_layers: 1  # Number of layers for the RNN projector (if type is 'rnn').
+  type: fc
+  input_size: 1953
+  latent_size: 4
+  layer_shapes: [32, 8]
+  activations: ['ReLU', 'ReLU']
 
 middle_out:
-  region_latent_size: 4  # Size of the latent representation after message passing.
-  num_peers: 3  # Number of most correlated peers to consider.
+  region_latent_size: 4
+  num_peers: 3
 
 predictor:
-  layer_shapes: [3]  # List of layer sizes for the predictor.
-  activations: ['ReLU']  # Activation functions for the predictor layers.
+  layer_shapes: [3]
+  activations: ['ReLU']
 
 training:
-  epochs: 1024  # Number of training epochs.
-  batch_size: 32  # Batch size for training.
-  num_batches: 1 # Batches per epoch
-  learning_rate: 0.01  # Learning rate for the optimizer.
+  epochs: 1024
+  batch_size: 32
+  num_batches: 1
+  learning_rate: 0.01
 ---
 name: FC6
 import: $
 
 latent_projector:
-  type: fc  # Options: 'fc', 'rnn'
-  input_size: 195 # =0.1s 19531  # =1s Input size for the Latent Projector (length of snippets).
-  latent_size: 4  # Size of the latent representation before message passing.
-  layer_shapes: [16]  # List of layer sizes for the latent projector (if type is 'fc').
-  activations: ['ReLU']  # Activation functions for the latent projector layers (if type is 'fc').
-  #rnn_hidden_size: 4  # Hidden size for the RNN projector (if type is 'rnn').
-  #rnn_num_layers: 1  # Number of layers for the RNN projector (if type is 'rnn').
+  type: fc
+  input_size: 195
+  latent_size: 4
+  layer_shapes: [16]
+  activations: ['ReLU']
 
 middle_out:
-  region_latent_size: 8  # Size of the latent representation after message passing.
-  num_peers: 3  # Number of most correlated peers to consider.
+  region_latent_size: 8
+  num_peers: 3
 
 predictor:
-  layer_shapes: [3]  # List of layer sizes for the predictor.
-  activations: ['ReLU']  # Activation functions for the predictor layers.
+  layer_shapes: [3]
+  activations: ['ReLU']
 
 training:
-  epochs: 1024  # Number of training epochs.
-  batch_size: 16  # Batch size for training.
-  num_batches: 1 # Batches per epoch
-  learning_rate: 0.01  # Learning rate for the optimizer.
+  epochs: 1024
+  batch_size: 16
+  num_batches: 1
+  learning_rate: 0.01
 ---
 name: RNN
 import: $
 
 latent_projector:
-  type: rnn  # Options: 'fc', 'rnn', 'fourier'
-  input_size: 1953 # =0.1s 19531  # =1s Input size for the Latent Projector (length of snippets).
-  latent_size: 4  # Size of the latent representation before message passing.
-  #layer_shapes: [32, 8]  # List of layer sizes for the latent projector (if type is 'fc' or 'fourier').
-  #activations: ['ReLU', 'ReLU']  # Activation functions for the latent projector layers (if type is 'fc' or 'fourier').
-  rnn_hidden_size: 3  # Hidden size for the RNN projector (if type is 'rnn').
-  rnn_num_layers: 2  # Number of layers for the RNN projector (if type is 'rnn').
-  #num_frequencies: 16 # Number of frquency bins for the fourier decomp (if type is 'fourier').
-  #pass_raw_len: null # How many last samples to give raw to the net in addition to freqs (null = all) (if type is 'fourier').
+  type: rnn
+  input_size: 1953
+  latent_size: 4
+  rnn_hidden_size: 3
+  rnn_num_layers: 2
 
 middle_out:
-  region_latent_size: 4  # Size of the latent representation after message passing.
-  num_peers: 3  # Number of most correlated peers to consider.
+  region_latent_size: 4
+  num_peers: 3
 
 predictor:
-  layer_shapes: [3]  # List of layer sizes for the predictor.
-  activations: ['ReLU']  # Activation functions for the predictor layers.
+  layer_shapes: [3]
+  activations: ['ReLU']
 
 training:
-  epochs: 1024  # Number of training epochs.
-  batch_size: 64  # Batch size for training.
-  num_batches: 2 # Batches per epoch
-  learning_rate: 0.01  # Learning rate for the optimizer.
+  epochs: 1024
+  batch_size: 64
+  num_batches: 2
+  learning_rate: 0.01
