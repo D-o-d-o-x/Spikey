@@ -53,30 +53,31 @@ class LatentFourierProjector(nn.Module):
         super(LatentFourierProjector, self).__init__()
         self.fourier_transform = FourierTransformLayer()
         layers = []
+
         if pass_raw_len is None:
             pass_raw_len = input_size
         else:
             assert pass_raw_len <= input_size
+
         in_features = pass_raw_len + (input_size // 2 + 1) * 2  # (input_size // 2 + 1) real + imaginary parts
         for i, out_features in enumerate(layer_shapes):
             layers.append(nn.Linear(in_features, out_features))
             if activations[i] != 'None':
                 layers.append(get_activation(activations[i]))
             in_features = out_features
+        
         layers.append(nn.Linear(in_features, latent_size))
         self.fc = nn.Sequential(*layers)
         self.latent_size = latent_size
         self.pass_raw_len = pass_raw_len
 
     def forward(self, x):
-        # Apply Fourier Transform
-        x_fft = self.fourier_transform(x)
-        # Separate real and imaginary parts and combine them
+        batch_1, batch_2, timesteps = x.size()
+        x_fft = self.fourier_transform(x.view(batch_1 * batch_2, timesteps))
         x_fft_real_imag = torch.cat((x_fft.real, x_fft.imag), dim=-1)
-        # Combine part of the raw input with Fourier features
-        combined_input = torch.cat([x[:, -self.pass_raw_len:], x_fft_real_imag], dim=-1)
-        # Process through fully connected layers
+        combined_input = torch.cat([x.view(batch_1 * batch_2, timesteps)[:, -self.pass_raw_len:], x_fft_real_imag], dim=-1)
         latent = self.fc(combined_input)
+        latent = latent.view(batch_1, batch_2, self.latent_size)
         return latent
 
 class MiddleOut(nn.Module):
@@ -84,11 +85,15 @@ class MiddleOut(nn.Module):
         super(MiddleOut, self).__init__()
         if residual:
             assert latent_size == region_latent_size
+        if num_peers == 0:
+            assert latent_size == region_latent_size
         self.num_peers = num_peers
         self.fc = nn.Linear(latent_size * 2 + 1, region_latent_size)
         self.residual = residual
 
     def forward(self, my_latent, peer_latents, peer_metrics):
+        if self.num_peers == 0:
+            return my_latent
         new_latents = []
         for p in range(peer_latents.shape[-2]):
             peer_latent, metric = peer_latents[:, p, :], peer_metrics[:, p]
