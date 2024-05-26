@@ -112,13 +112,15 @@ name: RNN
 import: $
 
 latent_projector:
-  type: rnn  # Options: 'fc', 'rnn'
+  type: rnn  # Options: 'fc', 'rnn', 'fourier'
   input_size: 1953 # =0.1s 19531  # =1s Input size for the Latent Projector (length of snippets).
   latent_size: 4  # Size of the latent representation before message passing.
-  #layer_shapes: [32, 8]  # List of layer sizes for the latent projector (if type is 'fc').
-  #activations: ['ReLU', 'ReLU']  # Activation functions for the latent projector layers (if type is 'fc').
+  #layer_shapes: [32, 8]  # List of layer sizes for the latent projector (if type is 'fc' or 'fourier').
+  #activations: ['ReLU', 'ReLU']  # Activation functions for the latent projector layers (if type is 'fc' or 'fourier').
   rnn_hidden_size: 3  # Hidden size for the RNN projector (if type is 'rnn').
   rnn_num_layers: 2  # Number of layers for the RNN projector (if type is 'rnn').
+  #num_frequencies: 16 # Number of frquency bins for the fourier decomp (if type is 'fourier').
+  #pass_raw_len: null # How many last samples to give raw to the net in addition to freqs (null = all) (if type is 'fourier').
 
 middle_out:
   region_latent_size: 4  # Size of the latent representation after message passing.

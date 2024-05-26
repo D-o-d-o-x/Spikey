@@ -5,7 +5,7 @@ import numpy as np
 import random, math
 from utils import visualize_prediction, plot_delta_distribution
 from data_processing import download_and_extract_data, load_all_wavs, split_data_by_time, compute_topology_metrics
-from models import LatentProjector, LatentRNNProjector, MiddleOut, Predictor
+from models import LatentFCProjector, LatentRNNProjector, LatentFourierProjector,MiddleOut, Predictor
 from bitstream import IdentityEncoder, ArithmeticEncoder, Bzip2Encoder
 import wandb
 from pycallgraph2 import PyCallGraph
@@ -51,9 +51,11 @@ class SpikeRunner(Slate_Runner):
         region_latent_size = slate.consume(config, 'middle_out.region_latent_size')
 
         if latent_projector_type == 'fc':
-            self.projector = LatentProjector(latent_size=latent_size, input_size=input_size, **slate.consume(config, 'latent_projector', expand=True)).to(device)
+            self.projector = LatentFCProjector(latent_size=latent_size, input_size=input_size, **slate.consume(config, 'latent_projector', expand=True)).to(device)
         elif latent_projector_type == 'rnn':
             self.projector = LatentRNNProjector(latent_size=latent_size, input_size=input_size, **slate.consume(config, 'latent_projector', expand=True)).to(device)
+        elif latent_projector_type == 'fourier':
+            self.projector = LatentFourierProjector(latent_size=latent_size, input_size=input_size, **slate.consume(config, 'latent_projector', expand=True)).to(device)
 
         self.middle_out = MiddleOut(latent_size=latent_size, region_latent_size=region_latent_size, num_peers=self.num_peers, **slate.consume(config, 'middle_out', expand=True)).to(device)
         self.predictor = Predictor(region_latent_size=region_latent_size, **slate.consume(config, 'predictor', expand=True)).to(device)
