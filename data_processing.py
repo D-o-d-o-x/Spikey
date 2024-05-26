@@ -36,7 +36,7 @@ def compute_topology_metrics(data):
 
     metric_matrix = np.corrcoef(trimmed_data)
     np.fill_diagonal(metric_matrix, 0)
-    return metric_matrix
+    return np.abs(metric_matrix)
 
 def split_data_by_time(data, split_ratio=0.5):
     train_data = []
