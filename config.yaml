@@ -105,6 +105,7 @@ training:
   save_path: models
   peer_gradients_factor: 0.25
   value_scale: 1000
+  device: cpu
 
 middle_out:
   residual: false
@@ -300,7 +301,7 @@ training:
 grid:
   training.value_scale: [1, 100, 1000, 10000]
 ---
-name: FC_BSAbl2
+name: FC_BSAbl3 # 64 is best, everything >=64 is ok
 import: $
 
 latent_projector:
@@ -328,3 +329,200 @@ training:
 
 grid:
   training.batch_size: [64, 128, 256]
+---
+name: FC_smol_master
+import: $
+
+scheduler:
+  reps_per_version: 8
+  agents_per_job: 8
+
+latent_projector:
+  type: fc
+  input_size: 195
+  latent_size: 4
+  layer_shapes: [20, 6]
+  activations: ['ReLU', 'ReLU']
+
+middle_out:
+  region_latent_size: 4
+  num_peers: 2
+  residual: true
+
+predictor:
+  layer_shapes: [2]
+  activations: ['ReLU']
+
+training:
+  epochs: 10000
+  batch_size: 32
+  num_batches: 1
+  learning_rate: 0.01
+  device: cpu
+---
+name: FC_smolTanh
+import: $
+
+latent_projector:
+  type: fc
+  input_size: 195
+  latent_size: 4
+  layer_shapes: [20, 6]
+  activations: ['Tanh', 'Tanh']
+
+middle_out:
+  region_latent_size: 4
+  num_peers: 2
+  residual: true
+
+predictor:
+  layer_shapes: [2]
+  activations: ['Tanh']
+
+training:
+  epochs: 1024
+  batch_size: 32
+  num_batches: 1
+  learning_rate: 0.01
+  device: cpu
+---
+name: FOURIER_thin
+import: $
+
+latent_projector:
+  type: fourier
+  input_size: 1953 # 0.1s
+  latent_size: 4
+  layer_shapes: [32, 8]
+  activations: ['ReLU', 'ReLU']
+  pass_raw_len: 195 # 0.01s
+
+middle_out:
+  region_latent_size: 4
+  num_peers: 3
+  residual: true
+
+predictor:
+  layer_shapes: [3]
+  activations: ['ReLU']
+
+training:
+  epochs: 1024
+  batch_size: 32
+  num_batches: 1
+  learning_rate: 0.01
+---
+name: FOURIER_thicc
+import: $
+
+latent_projector:
+  type: fourier
+  input_size: 1953 # 0.1s
+  latent_size: 8
+  layer_shapes: [32, 8]
+  activations: ['ReLU', 'ReLU']
+  pass_raw_len: 195 # 0.01s
+
+middle_out:
+  region_latent_size: 8
+  num_peers: 3
+  residual: true
+
+predictor:
+  layer_shapes: [4]
+  activations: ['ReLU']
+
+training:
+  epochs: 1024
+  batch_size: 32
+  num_batches: 1
+  learning_rate: 0.01
+---
+name: FC_master2
+import: $
+
+scheduler:
+  reps_per_version: 8
+  agents_per_job: 8
+
+latent_projector:
+  type: fc
+  input_size: 1953
+  latent_size: 4
+  layer_shapes: [32, 8]
+  activations: ['ReLU', 'ReLU']
+
+middle_out:
+  region_latent_size: 4
+  num_peers: 3
+  residual: true
+
+predictor:
+  layer_shapes: [3]
+  activations: ['ReLU']
+
+training:
+  epochs: 1024
+  batch_size: 32
+  num_batches: 1
+  learning_rate: 0.01
+---
+name: debug
+import: $
+
+scheduler:
+  reps_per_version: 1
+  agents_per_job: 1
+
+latent_projector:
+  type: fc
+  input_size: 1953
+  latent_size: 4
+  layer_shapes: [32, 8]
+  activations: ['ReLU', 'ReLU']
+
+middle_out:
+  region_latent_size: 4
+  num_peers: 3
+  residual: true
+
+predictor:
+  layer_shapes: [3]
+  activations: ['ReLU']
+
+training:
+  epochs: 1024
+  batch_size: 32
+  num_batches: 1
+  learning_rate: 0.01
+---
+name: FOURIER_smol_master
+import: $
+
+scheduler:
+  reps_per_version: 8
+  agents_per_job: 8
+
+latent_projector:
+  type: fourier
+  input_size: 195
+  latent_size: 4
+  layer_shapes: [20, 6]
+  activations: ['ReLU', 'ReLU']
+  pass_raw_len: 20 # 0.001s
+
+middle_out:
+  region_latent_size: 4
+  num_peers: 2
+  residual: true
+
+predictor:
+  layer_shapes: [2]
+  activations: ['ReLU']
+
+training:
+  epochs: 10000
+  batch_size: 32
+  num_batches: 1
+  learning_rate: 0.01
+  device: cpu
