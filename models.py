@@ -43,10 +43,10 @@ class LatentRNNProjector(nn.Module):
         return latent
 
 class MiddleOut(nn.Module):
-    def __init__(self, latent_size, output_size, num_peers):
+    def __init__(self, latent_size, region_latent_size, num_peers):
         super(MiddleOut, self).__init__()
         self.num_peers = num_peers
-        self.fc = nn.Linear(latent_size * 2 + 1, output_size)
+        self.fc = nn.Linear(latent_size * 2 + 1, region_latent_size)
 
     def forward(self, my_latent, peer_latents, peer_metrics):
         new_latents = []
@@ -61,10 +61,10 @@ class MiddleOut(nn.Module):
         return averaged_latent
 
 class Predictor(nn.Module):
-    def __init__(self, output_size, layer_shapes, activations):
+    def __init__(self, region_latent_size, layer_shapes, activations):
         super(Predictor, self).__init__()
         layers = []
-        in_features = output_size
+        in_features = region_latent_size
         for i, out_features in enumerate(layer_shapes):
             layers.append(nn.Linear(in_features, out_features))
             if activations[i] != 'None':

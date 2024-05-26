@@ -69,7 +69,7 @@ latent_projector:
   #rnn_num_layers: 1  # Number of layers for the RNN projector (if type is 'rnn').
 
 middle_out:
-  output_size: 4  # Size of the latent representation after message passing.
+  region_latent_size: 4  # Size of the latent representation after message passing.
   num_peers: 3  # Number of most correlated peers to consider.
 
 predictor:
@@ -95,7 +95,7 @@ latent_projector:
   #rnn_num_layers: 1  # Number of layers for the RNN projector (if type is 'rnn').
 
 middle_out:
-  output_size: 8  # Size of the latent representation after message passing.
+  region_latent_size: 8  # Size of the latent representation after message passing.
   num_peers: 3  # Number of most correlated peers to consider.
 
 predictor:
@@ -121,7 +121,7 @@ latent_projector:
   rnn_num_layers: 2  # Number of layers for the RNN projector (if type is 'rnn').
 
 middle_out:
-  output_size: 4  # Size of the latent representation after message passing.
+  region_latent_size: 4  # Size of the latent representation after message passing.
   num_peers: 3  # Number of most correlated peers to consider.
 
 predictor:

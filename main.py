@@ -48,15 +48,15 @@ class SpikeRunner(Slate_Runner):
         latent_projector_type = slate.consume(config, 'latent_projector.type', default='fc')
         latent_size = slate.consume(config, 'latent_projector.latent_size')
         input_size = slate.consume(config, 'latent_projector.input_size')
-        output_size = slate.consume(config, 'middle_out.output_size')
+        region_latent_size = slate.consume(config, 'middle_out.region_latent_size')
 
         if latent_projector_type == 'fc':
             self.projector = LatentProjector(latent_size=latent_size, input_size=input_size, **slate.consume(config, 'latent_projector', expand=True)).to(device)
         elif latent_projector_type == 'rnn':
             self.projector = LatentRNNProjector(latent_size=latent_size, input_size=input_size, **slate.consume(config, 'latent_projector', expand=True)).to(device)
 
-        self.middle_out = MiddleOut(latent_size=latent_size, output_size=output_size, num_peers=self.num_peers, **slate.consume(config, 'middle_out', expand=True)).to(device)
-        self.predictor = Predictor(output_size=output_size, **slate.consume(config, 'predictor', expand=True)).to(device)
+        self.middle_out = MiddleOut(latent_size=latent_size, region_latent_size=region_latent_size, num_peers=self.num_peers, **slate.consume(config, 'middle_out', expand=True)).to(device)
+        self.predictor = Predictor(region_latent_size=region_latent_size, **slate.consume(config, 'predictor', expand=True)).to(device)
 
         # Training parameters
         self.input_size = input_size
