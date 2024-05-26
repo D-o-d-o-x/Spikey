@@ -44,8 +44,7 @@ Based on an expected distribution of deltas that have to be transmitted, an effi
 
 - All currently implemented bitstream encoders are rather naive. We know that lead values from the N1 only have 10-bit precision, but the WAV file provides us with 32-bit floats. All my bitstream encoders are also based on 32-bit floats; discretizing back into the 10-bit space would be a low-hanging fruit for ~3.2x compression.
 - Since we merely encode the remaining delta, we can go even more efficient by constructing something along the lines of a Huffman tree.
-- Loss is not coming down during training... So basically nothing works right now. But the text I wrote is cool, right?
-- Make a logo
+- All trained models stick mostly suck. Im not beating a compression ratio of ~2x (not counting bitstream encoder)
 
 ## Installation
 

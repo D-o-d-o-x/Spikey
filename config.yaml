@@ -2,13 +2,12 @@ name: EXAMPLE
 
 latent_projector:
   type: 'fc'  # Type of latent projector: 'fc', 'rnn', 'fourier'
-  input_size: 1953  # Input size for the Latent Projector (length of snippets).
+  input_size: 1953  # Input size for the Latent Projector (length of snippets). (=0.1s)
   latent_size: 4  # Size of the latent representation before message passing.
   layer_shapes: [32, 8]  # List of layer sizes for the latent projector if type is 'fc' or 'fourier'.
   activations: ['ReLU', 'ReLU']  # Activation functions for the latent projector layers if type is 'fc' or 'fourier'.
   rnn_hidden_size: 4  # Hidden size for the RNN projector if type is 'rnn'.
   rnn_num_layers: 1  # Number of layers for the RNN projector if type is 'rnn'.
-  num_frequencies: 16  # Number of frequency bins for the Fourier decomposition if type is 'fourier'.
   pass_raw_len: 50  # Number of last samples to pass raw to the net in addition to frequencies (null = all) if type is 'fourier'.
 
 middle_out:
@@ -25,7 +24,8 @@ training:
   batch_size: 32  # Batch size for training.
   num_batches: 1  # Number of batches per epoch.
   learning_rate: 0.01  # Learning rate for the optimizer.
-  peer_gradients: true # Wether we allow gradients flow to the latent projector for peers. Leads to higher sample efficiency but also less stability.
+  peer_gradients_factor: 0.33 # Factor for gradients acting on predictor throught peers. 0.0 = detach gradients.
+  value_scale: 1 # Normalize data by dividing values by this (and multiple outputs)
   eval_freq: -1  # Frequency of evaluation during training (in epochs).
   save_path: models  # Directory to save the best model and encoder.
 
@@ -47,7 +47,7 @@ profiler:
 ---
 
 name: DEFAULT
-project: Spikey_1
+project: Spikey_2
 
 slurm:
   name: 'Spikey_{config[name]}'
@@ -70,7 +70,7 @@ runner: spikey
 
 scheduler:
   reps_per_version: 1
-  agents_per_job: 100
+  agents_per_job: 8
   reps_per_agent: 1
 
 wandb:
@@ -81,9 +81,9 @@ wandb:
   #tags:
   #  - '{config[env][name]}'
   #  - '{config[algo][name]}'
-  sync_tensorboard: False
-  monitor_gym: False
-  save_code: False
+  sync_tensorboard: false
+  monitor_gym: false
+  save_code: false
 
 evaluation:
   full_compression: false
@@ -103,10 +103,11 @@ profiler:
 training:
   eval_freq: -1 # 8
   save_path: models
-  peer_gradients: True
+  peer_gradients_factor: 0.25
+  value_scale: 1000
 
 middle_out:
-  residual: False
+  residual: false
 ---
 name: FC
 import: $
@@ -121,6 +122,7 @@ latent_projector:
 middle_out:
   region_latent_size: 4
   num_peers: 3
+  residual: true
 
 predictor:
   layer_shapes: [3]
@@ -132,19 +134,20 @@ training:
   num_batches: 1
   learning_rate: 0.01
 ---
-name: FC6
+name: FC_AblLR
 import: $
 
 latent_projector:
   type: fc
-  input_size: 195
+  input_size: 1953
   latent_size: 4
-  layer_shapes: [16]
-  activations: ['ReLU']
+  layer_shapes: [32, 8]
+  activations: ['ReLU', 'ReLU']
 
 middle_out:
-  region_latent_size: 8
+  region_latent_size: 4
   num_peers: 3
+  residual: true
 
 predictor:
   layer_shapes: [3]
@@ -152,9 +155,13 @@ predictor:
 
 training:
   epochs: 1024
-  batch_size: 16
+  batch_size: 32
   num_batches: 1
   learning_rate: 0.01
+  device: cpu
+
+grid:
+  training.learning_rate: [0.1, 0.01, 0.001, 0.0001]
 ---
 name: RNN
 import: $
@@ -169,6 +176,7 @@ latent_projector:
 middle_out:
   region_latent_size: 4
   num_peers: 3
+  residual: true
 
 predictor:
   layer_shapes: [3]
@@ -176,6 +184,147 @@ predictor:
 
 training:
   epochs: 1024
-  batch_size: 64
+  batch_size: 32
   num_batches: 2
   learning_rate: 0.01
+---
+name: FOURIER
+import: $
+
+latent_projector:
+  type: fourier
+  input_size: 19531 # 1s
+  latent_size: 8
+  layer_shapes: [32, 8]
+  activations: ['ReLU', 'ReLU']
+  pass_raw_len: 1953 # 0.1s
+
+middle_out:
+  region_latent_size: 8
+  num_peers: 3
+  residual: true
+
+predictor:
+  layer_shapes: [3]
+  activations: ['ReLU']
+
+training:
+  epochs: 1024
+  batch_size: 32
+  num_batches: 16
+  learning_rate: 0.01
+---
+name: FC_AblPeerGrad # Best: 0.33
+import: $
+
+latent_projector:
+  type: fc
+  input_size: 1953
+  latent_size: 4
+  layer_shapes: [32, 8]
+  activations: ['ReLU', 'ReLU']
+
+middle_out:
+  region_latent_size: 4
+  num_peers: 2
+  residual: true
+
+predictor:
+  layer_shapes: [3]
+  activations: ['ReLU']
+
+training:
+  epochs: 1024
+  batch_size: 16
+  num_batches: 1
+  learning_rate: 0.01
+  device: cpu
+
+grid:
+  training:
+    peer_gradients_factor: [0.0, 0.1, 0.25, 0.33, 0.5, 1.0]
+---
+name: FC_NoPeer # Worse
+import: $
+
+latent_projector:
+  type: fc
+  input_size: 1953
+  latent_size: 4
+  layer_shapes: [32, 8]
+  activations: ['ReLU', 'ReLU']
+
+middle_out:
+  region_latent_size: 4
+  num_peers: 0
+  residual: true
+
+predictor:
+  layer_shapes: [3]
+  activations: ['ReLU']
+
+training:
+  epochs: 1024
+  batch_size: 16
+  num_batches: 1
+  learning_rate: 0.01
+  device: cpu
+
+---
+name: FC_ScaleAbl # Best: 1000
+import: $
+
+latent_projector:
+  type: fc
+  input_size: 1953
+  latent_size: 4
+  layer_shapes: [32, 8]
+  activations: ['ReLU', 'ReLU']
+
+middle_out:
+  region_latent_size: 4
+  num_peers: 3
+  residual: true
+
+predictor:
+  layer_shapes: [3]
+  activations: ['ReLU']
+
+training:
+  epochs: 1024
+  batch_size: 32
+  num_batches: 1
+  learning_rate: 0.01
+  device: cpu
+
+grid:
+  training.value_scale: [1, 100, 1000, 10000]
+---
+name: FC_BSAbl2
+import: $
+
+latent_projector:
+  type: fc
+  input_size: 1953
+  latent_size: 4
+  layer_shapes: [32, 8]
+  activations: ['ReLU', 'ReLU']
+
+middle_out:
+  region_latent_size: 4
+  num_peers: 3
+  residual: true
+
+predictor:
+  layer_shapes: [3]
+  activations: ['ReLU']
+
+training:
+  epochs: 1024
+  batch_size: 32
+  num_batches: 1
+  learning_rate: 0.01
+  device: cpu
+
+grid:
+  training.batch_size: [64, 128, 256]
