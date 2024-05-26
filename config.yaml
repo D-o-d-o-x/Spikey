@@ -1,7 +1,7 @@
 name: EXAMPLE
 
 latent_projector:
-  type: fc  # Type of latent projector: 'fc', 'rnn', 'fourier'
+  type: 'fc'  # Type of latent projector: 'fc', 'rnn', 'fourier'
   input_size: 1953  # Input size for the Latent Projector (length of snippets).
   latent_size: 4  # Size of the latent representation before message passing.
   layer_shapes: [32, 8]  # List of layer sizes for the latent projector if type is 'fc' or 'fourier'.
