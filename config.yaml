@@ -26,7 +26,7 @@ training:
   learning_rate: 0.01  # Learning rate for the optimizer.
   peer_gradients_factor: 0.33 # Factor for gradients acting on predictor throught peers. 0.0 = detach gradients.
   value_scale: 1 # Normalize data by dividing values by this (and multiple outputs)
-  eval_freq: -1  # Frequency of evaluation during training (in epochs).
+  eval_freq: 8  # Frequency of evaluation during training (in epochs).
   save_path: models  # Directory to save the best model and encoder.
 
 evaluation:
@@ -89,7 +89,7 @@ evaluation:
   full_compression: false
 
 bitstream_encoding:
-  type: identity
+  type: binomHuffman
 
 data:
   url: https://content.neuralink.com/compression-challenge/data.zip
@@ -101,7 +101,7 @@ profiler:
   enable: false
 
 training:
-  eval_freq: -1 # 8
+  eval_freq: 8
   save_path: models
   peer_gradients_factor: 0.25
   value_scale: 1000
@@ -330,7 +330,7 @@ training:
 grid:
   training.batch_size: [64, 128, 256]
 ---
-name: FC_smol_master
+name: FC_smol_master2
 import: $
 
 scheduler:
@@ -438,12 +438,41 @@ training:
   num_batches: 1
   learning_rate: 0.01
 ---
-name: FC_master2
+name: FC_master3
 import: $
 
 scheduler:
   reps_per_version: 8
   agents_per_job: 8
+
+latent_projector:
+  type: fc
+  input_size: 1953
+  latent_size: 4
+  layer_shapes: [32, 8]
+  activations: ['ReLU', 'ReLU']
+
+middle_out:
+  region_latent_size: 4
+  num_peers: 3
+  residual: true
+
+predictor:
+  layer_shapes: [3]
+  activations: ['ReLU']
+
+training:
+  epochs: 1024
+  batch_size: 32
+  num_batches: 1
+  learning_rate: 0.01
+---
+name: FC_master_single
+import: $
+
+scheduler:
+  reps_per_version: 1
+  agents_per_job: 1
 
 latent_projector:
   type: fc
