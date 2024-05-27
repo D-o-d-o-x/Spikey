@@ -30,7 +30,7 @@ We separate the predictive model into four parts:
 
 2. **Latent Projector**: This takes the feature vectors and projects them into a latent space. The latent projector can be configured as a fully connected network or an RNN (LSTM) with an arbitrary shape.
 
-3. **MiddleOut (Message Passer)**: For each lead, this module performs message passing according to the thread topology. Their latent representations along with their distance metrics are used to generate region latent representations. This is done by training a fully connected layer to map from (our_latent, their_latent, metric) -> region_latent and then averaging over all region_latent values to get the final representation.
+3. **[MiddleOut](https://www.youtube.com/watch?v=l49MHwooaVQ)**: For each lead, this module performs message passing according to the thread topology. Their latent representations along with their distance metrics are used to generate region latent representations. This is done by training a fully connected layer to map from (our_latent, their_latent, metric) -> region_latent and then averaging over all region_latent values to get the final representation.
 
 4. **Predictor**: This module takes the new latent representation from the MiddleOut module and predicts the next timestep. The goal is to minimize the prediction error during training. It can be configured to be an FCNN of arbitrary shape.
 
