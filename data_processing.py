@@ -24,7 +24,7 @@ def load_all_wavs(data_dir, cut_length=None):
         if cut_length is not None:
             print(cut_length)
             data = data[:cut_length]
-        all_data.append(unfuckify(data))
+        all_data.append(data)
     return all_data
 
 def save_wav(file_path, data, sample_rate=19531):
@@ -33,10 +33,9 @@ def save_wav(file_path, data, sample_rate=19531):
 def save_all_wavs(output_dir, all_data, input_filenames):
     for data, filename in zip(all_data, input_filenames):
         output_file_path = os.path.join(output_dir, filename)
-        save_wav(output_file_path, refuckify(data))
+        save_wav(output_file_path, data)
 
 def compute_topology_metrics(data):
-    num_leads = len(data)
     min_length = min(len(d) for d in data)
     
     # Trim all leads to the minimum length
@@ -58,7 +57,12 @@ def split_data_by_time(data, split_ratio=0.5):
 def unfuckify(nums):
     return np.round((nums + 33) / 64).astype(int)
 
+def unfuckify_all(wavs):
+    return [unfuckify(wav) for wav in wavs]
+
 # The released dataset is 10bit resolution encoded in a 16bit range with a completely fucked up mapping, which we have to replicate for lossless fml
+# This func works for all samples contained in the provided dataset, but I don't guarentee it works for all possible data
+# The solution would be to just never fuck up the data (operate on the true 10bit values)
 def refuckify(nums):
     n = np.round((nums * 64) - 32).astype(int)
     n[n >= 32] -= 1
@@ -74,3 +78,6 @@ def refuckify(nums):
     n[n <= -32832] -= -65599
     
     return n
+
+def refuckify_all(wavs):
+    return [refuckify(wav) for wav in wavs]
