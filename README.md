@@ -60,6 +60,7 @@ The provided eval.sh script is also flawed (as in: not aligned with what should 
 
 - Finalize new Feature Extractor Implementations
 - Our flagship bitstream encoder builds an optimal Huffman tree assuming the deltas are binomially distributed. This should be updated when we know a more precise approximation of the delta distribution.
+- Tune HPs / Benchmark
 - cli for compress / decompress
 
 ## Installation
