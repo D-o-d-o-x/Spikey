@@ -24,7 +24,7 @@ class FeatureExtractor(nn.Module):
         transforms = []
         for item in config:
             transform_type = item['type']
-            length = item.get('length', self.input_size)
+            length = item.get('length', None)
             if length in [None, -1]:
                 length = self.input_size
 

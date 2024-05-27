@@ -1,41 +1,42 @@
 name: EXAMPLE
 
 feature_extractor:
-  - type: 'identity'  # Pass the last n samples of the input data directly.
-    length: 8  # Number of last samples to pass directly. Use full input size if set to null.
-  - type: 'fourier'  # Apply Fourier transform to the input data.
-    length: null  # Use full input size if set to null. Fourier transform outputs both real and imaginary parts, doubling the size. (Computationally expensive)
-  - type: 'wavelet'  # Apply selected wavelet transform to the input data.
-    wavelet_type: 'haar'  # Haar wavelet is simple and fast, but may not capture detailed features well.
-    length: null  # Use full input size if set to null.
-  - type: 'wavelet'
-    wavelet_type: 'cgau1'  # Complex Gaussian wavelets are used for complex-valued signal analysis and capturing phase information.
-    length: null  # Use full input size if set to null.
-  - type: 'wavelet'
-    wavelet_type: 'db1'  # Daubechies wavelets provide a balance between time and frequency localization.
-    length: null  # Use full input size if set to null. (Computationally expensive)
-  - type: 'wavelet'
-    wavelet_type: 'sym2'  # Symlet wavelets are nearly symmetrical, offering improved phase characteristics over Daubechies.
-    length: null  # Use full input size if set to null. (Computationally expensive)
-  - type: 'wavelet'
-    wavelet_type: 'coif1'  # Coiflet wavelets have more vanishing moments, suitable for capturing polynomial trends.
-    length: null  # Use full input size if set to null. (Computationally expensive)
-  - type: 'wavelet'
-    wavelet_type: 'bior1.3'  # Biorthogonal wavelets provide perfect reconstruction and linear phase characteristics.
-    length: null  # Use full input size if set to null. (Computationally expensive)
-  - type: 'wavelet'
-    wavelet_type: 'rbio1.3'  # Reverse Biorthogonal wavelets are similar to Biorthogonal but optimized for different applications.
-    length: null  # Use full input size if set to null. (Computationally expensive)
-  - type: 'wavelet'
-    wavelet_type: 'dmey'  # Discrete Meyer wavelets offer good frequency localization, ideal for signals with oscillatory components.
-    length: null  # Use full input size if set to null. (Computationally expensive)
-  - type: 'wavelet'
-    wavelet_type: 'morl'  # Morlet wavelets are useful for time-frequency analysis due to their Gaussian-modulated sinusoid shape.
-    length: null  # Use full input size if set to null. (Computationally expensive)
+  input_size: 1953 # Input size for the Feature Extractor (length of snippets). (=0.1s)
+  transforms:
+    - type: 'identity'  # Pass the last n samples of the input data directly.
+      length: 8  # Number of last samples to pass directly. Use full input size if set to null.
+    - type: 'fourier'  # Apply Fourier transform to the input data.
+      length: null  # Use full input size if set to null. Fourier transform outputs both real and imaginary parts, doubling the size. (Computationally expensive)
+    - type: 'wavelet'  # Apply selected wavelet transform to the input data.
+      wavelet_type: 'haar'  # Haar wavelet is simple and fast, but may not capture detailed features well.
+      length: null  # Use full input size if set to null.
+    - type: 'wavelet'
+      wavelet_type: 'cgau1'  # Complex Gaussian wavelets are used for complex-valued signal analysis and capturing phase information.
+      length: null  # Use full input size if set to null.
+    - type: 'wavelet'
+      wavelet_type: 'db1'  # Daubechies wavelets provide a balance between time and frequency localization.
+      length: null  # Use full input size if set to null. (Computationally expensive)
+    - type: 'wavelet'
+      wavelet_type: 'sym2'  # Symlet wavelets are nearly symmetrical, offering improved phase characteristics over Daubechies.
+      length: null  # Use full input size if set to null. (Computationally expensive)
+    - type: 'wavelet'
+      wavelet_type: 'coif1'  # Coiflet wavelets have more vanishing moments, suitable for capturing polynomial trends.
+      length: null  # Use full input size if set to null. (Computationally expensive)
+    - type: 'wavelet'
+      wavelet_type: 'bior1.3'  # Biorthogonal wavelets provide perfect reconstruction and linear phase characteristics.
+      length: null  # Use full input size if set to null. (Computationally expensive)
+    - type: 'wavelet'
+      wavelet_type: 'rbio1.3'  # Reverse Biorthogonal wavelets are similar to Biorthogonal but optimized for different applications.
+      length: null  # Use full input size if set to null. (Computationally expensive)
+    - type: 'wavelet'
+      wavelet_type: 'dmey'  # Discrete Meyer wavelets offer good frequency localization, ideal for signals with oscillatory components.
+      length: null  # Use full input size if set to null. (Computationally expensive)
+    - type: 'wavelet'
+      wavelet_type: 'morl'  # Morlet wavelets are useful for time-frequency analysis due to their Gaussian-modulated sinusoid shape.
+      length: null  # Use full input size if set to null. (Computationally expensive)
 
 latent_projector:
   type: 'fc'  # Type of latent projector: 'fc', 'rnn', 'fourier'
-  input_size: 1953  # Input size for the Latent Projector (length of snippets). (=0.1s)
   latent_size: 4  # Size of the latent representation before message passing.
   layer_shapes: [32, 8]  # List of layer sizes for the latent projector if type is 'fc' or 'fourier'.
   activations: ['ReLU', 'ReLU']  # Activation functions for the latent projector layers if type is 'fc' or 'fourier'.
@@ -145,6 +146,11 @@ middle_out:
 ---
 name: FC
 import: $
+
+feature_extractor:
+  input size: 10
+  transforms:
+    - type: 'identity'
 
 latent_projector:
   type: fc
