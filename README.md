@@ -54,7 +54,7 @@ On another note: Why is the dataset provided not 10-bit if the readings are? The
 
 ## On Evaluation
 
-The provided eval.sh script is also flawed (as in: not aligned with what should be optimized for), since it (a) counts the size of the compressor and decompressor as part of the transmitted data. Especially the decompressor part makes no sense. It also makes it impossible to compress data from multiple threads together, which is required for the free lunch we can get from topological reconstruction.
+The provided eval.sh script is also flawed (as in: not aligned with what should be optimized for), since it counts the size of the compressor and decompressor as part of the transmitted data. Especially the decompressor part makes no sense. It also makes it impossible to compress data from multiple threads together, which is required for the free lunch we can get from topological reconstruction.
 
 ## TODO
 
