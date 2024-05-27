@@ -51,11 +51,13 @@ Furthermore, there's no need for lossless compression. These readings feed into 
 
 Let's see how far we can get with the approach presented here...
 
-On another note: Why is the dataset provided not 10-bit if the readings are? They are all 16-bit. And the last 6 bits are not all zeros. We know they can't encode sensible information when the readings are only 10-bit, but we also can't just throw them away since they do contain something. We also observe that all possible values the data points can take on are separated by 64 or 63 (64 would make sense; 63 very much does not). (See `fucked_up_wavs.py`)
+### On fucked up wav files
+
+Why is the dataset provided not 10-bit if the readings are? They are all 16-bit. And the last 6 bits are not all zeros. We know they can't encode sensible information when the readings are only 10-bit, but we also can't just throw them away since they do contain something. We also observe that all possible values the data points can take on are separated by 64 or 63 (64 would make sense; 63 very much does not). (See `fucked_up_wavs.py`)
 
 ### On Evaluation
 
-The provided eval.sh script is also flawed (as in: not aligned with what should be optimized for), since it counts the size of the compressor and decompressor as part of the transmitted data. Especially the decompressor part makes no sense. It also makes it impossible to compress data from multiple threads together, which is required for the free lunch we can get from topological reconstruction.
+The provided eval.sh script is also somewhat flawed (as in: not aligned with what should be optimized for), since it counts the size of the compressor and decompressor as part of the transmitted data. Especially the decompressor part makes no sense. It also makes it impossible to compress data from multiple threads together, which is required for the free lunch we can get from topological reconstruction.
 
 ## TODO
 
