@@ -24,13 +24,15 @@ As the first step, we analyze readings from the leads to construct an approximat
 
 The main workhorse of our compression approach is a predictive model running both in the compressor and decompressor. With good predictions of the data, only the error between the prediction and actual data must be transmitted. We make use of the previously constructed topology to allow the predictive model's latent to represent the activity of brain regions based on the reading of the threads instead of just for threads themselves.
 
-We seperate the predictive model into three parts:
+We separate the predictive model into four parts:
 
-1. **Latent Projector**: This module takes in a segment of a lead and projects it into a latent space. The latent projector can be configured as a fully connected network or an RNN (LSTM) with an arbitrary shape.
+1. **Feature Extraction**: This module processes a given history of readings for a single thread and extracts relevant features (using mostly wavelet and Fourier transforms). Highly configurable, this module performs the heavy lifting of signal analysis, allowing shallow neural networks to handle the rest. (Full disclosure: I have no idea what half of the implemented wavelet transforms actually do. We just throw anything sensible at the problem and will narrow down later; making effective use of the fact that 'fuck around' and 'find out' are positively correlated.)
 
-2. **MiddleOut (Message Passer)**: For each lead, this module performs message passing according to the thread topology. Their latent representations along with their distance metrics are used to generate region latent representation. This is done by training a fully connected layer to map from (our_latent, their_latent, metric) -> region_latent and then averaging over all region_latent values to get the final representation.
+2. **Latent Projector**: This takes the feature vectors and projects them into a latent space. The latent projector can be configured as a fully connected network or an RNN (LSTM) with an arbitrary shape.
 
-3. **Predictor**: This module takes the new latent representation from the MiddleOut module and predicts the next timestep. The goal is to minimize the prediction error during training. It can be configured to be an FCNN of arbitrary shape.
+3. **MiddleOut (Message Passer)**: For each lead, this module performs message passing according to the thread topology. Their latent representations along with their distance metrics are used to generate region latent representations. This is done by training a fully connected layer to map from (our_latent, their_latent, metric) -> region_latent and then averaging over all region_latent values to get the final representation.
+
+4. **Predictor**: This module takes the new latent representation from the MiddleOut module and predicts the next timestep. The goal is to minimize the prediction error during training. It can be configured to be an FCNN of arbitrary shape.
 
 The neural networks used are rather small, making it possible to meet the latency and power requirements if implemented more efficiently.
 
@@ -42,8 +44,8 @@ Based on an expected distribution of deltas that have to be transmitted, an effi
 
 ## TODO
 
-- Our flagship bitstream encoder builds an optimal huffman tree assuming the deltas are binomially distributed. Should be updated when we know a more precise approx of the delta dist.
-- All trained models stick mostly suck. Im not beating a compression ratio of ~2x (not counting bitstream encoder). Probably a bug somewhere in our code?
+- Our flagship bitstream encoder builds an optimal Huffman tree assuming the deltas are binomially distributed. This should be updated when we know a more precise approximation of the delta distribution.
+- All trained models still mostly suck. I'm not beating a compression ratio of ~2x (not counting the bitstream encoder). Probably a bug somewhere in our code.
 
 ## Installation
 
@@ -67,6 +69,6 @@ pip install -e git+ssh://git@dominik-roth.eu/dodox/Slate.git#egg=slate
 
 To train the model, run:
 
-```calibash
+```bash
 python main.py <config_file.yaml> <exp_name>
 ```
