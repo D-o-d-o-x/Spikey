@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.fft as fft
+import pywt
 
 def get_activation(name):
     activations = {
@@ -13,11 +14,77 @@ def get_activation(name):
     }
     return activations[name]()
 
+class FeatureExtractor(nn.Module):
+    def __init__(self, input_size, transforms):
+        super(FeatureExtractor, self).__init__()
+        self.input_size = input_size
+        self.transforms = self.build_transforms(transforms)
+
+    def build_transforms(self, config):
+        transforms = []
+        for item in config:
+            transform_type = item['type']
+            length = item.get('length', self.input_size)
+            if length in [None, -1]:
+                length = self.input_size
+
+            if transform_type == 'identity':
+                transforms.append(('identity', length))
+            elif transform_type == 'fourier':
+                transforms.append(('fourier', length))
+            elif transform_type == 'wavelet':
+                wavelet_type = item['wavelet_type']
+                transforms.append(('wavelet', wavelet_type, length))
+        return transforms
+
+    def forward(self, x):
+        batch_1, batch_2, timesteps = x.size()
+        x = x.view(batch_1 * batch_2, timesteps)  # Combine batch dimensions for processing
+        outputs = []
+        for transform in self.transforms:
+            if transform[0] == 'identity':
+                _, length = transform
+                outputs.append(x[:, -length:])
+            elif transform[0] == 'fourier':
+                _, length = transform
+                fourier_transform = fft.fft(x[:, -length:], dim=1)
+                fourier_real = fourier_transform.real
+                fourier_imag = fourier_transform.imag
+                outputs.append(fourier_real)
+                outputs.append(fourier_imag)
+            elif transform[0] == 'wavelet':
+                _, wavelet_type, length = transform
+                coeffs = pywt.wavedec(x[:, -length:].cpu().numpy(), wavelet_type)
+                wavelet_coeffs = [torch.tensor(coeff, dtype=torch.float32, device=x.device) for coeff in coeffs]
+                wavelet_coeffs = torch.cat(wavelet_coeffs, dim=1)
+                outputs.append(wavelet_coeffs)
+        concatenated_outputs = torch.cat(outputs, dim=1)
+        concatenated_outputs = concatenated_outputs.view(batch_1, batch_2, -1)  # Reshape back to original batch dimensions
+        return concatenated_outputs
+
+    def compute_output_size(self):
+        size = 0
+        for transform in self.transforms:
+            if transform[0] == 'identity':
+                _, length = transform
+                size += length
+            elif transform[0] == 'fourier':
+                _, length = transform
+                size += length * 2  # Fourier transform outputs both real and imaginary parts
+            elif transform[0] == 'wavelet':
+                _, wavelet_type, length = transform
+                # Find the true size of the wavelet coefficients
+                test_signal = torch.zeros(length)
+                coeffs = pywt.wavedec(test_signal.numpy(), wavelet_type)
+                wavelet_size = sum(len(c) for c in coeffs)
+                size += wavelet_size
+        return size
+
 class LatentFCProjector(nn.Module):
-    def __init__(self, input_size, latent_size, layer_shapes, activations):
+    def __init__(self, feature_size, latent_size, layer_shapes, activations):
         super(LatentFCProjector, self).__init__()
         layers = []
-        in_features = input_size
+        in_features = feature_size
         for i, out_features in enumerate(layer_shapes):
             layers.append(nn.Linear(in_features, out_features))
             if activations[i] != 'None':
@@ -31,9 +98,9 @@ class LatentFCProjector(nn.Module):
         return self.fc(x)
 
 class LatentRNNProjector(nn.Module):
-    def __init__(self, input_size, rnn_hidden_size, rnn_num_layers, latent_size):
+    def __init__(self, feature_size, rnn_hidden_size, rnn_num_layers, latent_size):
         super(LatentRNNProjector, self).__init__()
-        self.rnn = nn.LSTM(input_size, rnn_hidden_size, rnn_num_layers, batch_first=True)
+        self.rnn = nn.LSTM(feature_size, rnn_hidden_size, rnn_num_layers, batch_first=True)
         self.fc = nn.Linear(rnn_hidden_size, latent_size)
         self.latent_size = latent_size
 
@@ -41,43 +108,6 @@ class LatentRNNProjector(nn.Module):
         batch_1, batch_2, timesteps = x.size()
         out, _ = self.rnn(x.view(batch_1 * batch_2, timesteps))
         latent = self.fc(out).view(batch_1, batch_2, self.latent_size)
-        return latent
-
-class FourierTransformLayer(nn.Module):
-    def forward(self, x):
-        x_fft = fft.rfft(x, dim=-1)
-        return x_fft
-
-class LatentFourierProjector(nn.Module):
-    def __init__(self, input_size, latent_size, layer_shapes, activations, pass_raw_len=None):
-        super(LatentFourierProjector, self).__init__()
-        self.fourier_transform = FourierTransformLayer()
-        layers = []
-
-        if pass_raw_len is None:
-            pass_raw_len = input_size
-        else:
-            assert pass_raw_len <= input_size
-
-        in_features = pass_raw_len + (input_size // 2 + 1) * 2  # (input_size // 2 + 1) real + imaginary parts
-        for i, out_features in enumerate(layer_shapes):
-            layers.append(nn.Linear(in_features, out_features))
-            if activations[i] != 'None':
-                layers.append(get_activation(activations[i]))
-            in_features = out_features
-        
-        layers.append(nn.Linear(in_features, latent_size))
-        self.fc = nn.Sequential(*layers)
-        self.latent_size = latent_size
-        self.pass_raw_len = pass_raw_len
-
-    def forward(self, x):
-        batch_1, batch_2, timesteps = x.size()
-        x_fft = self.fourier_transform(x.view(batch_1 * batch_2, timesteps))
-        x_fft_real_imag = torch.cat((x_fft.real, x_fft.imag), dim=-1)
-        combined_input = torch.cat([x.view(batch_1 * batch_2, timesteps)[:, -self.pass_raw_len:], x_fft_real_imag], dim=-1)
-        latent = self.fc(combined_input)
-        latent = latent.view(batch_1, batch_2, self.latent_size)
         return latent
 
 class MiddleOut(nn.Module):

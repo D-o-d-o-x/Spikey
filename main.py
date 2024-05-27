@@ -4,8 +4,8 @@ import torch.nn as nn
 import numpy as np
 import random, math
 from utils import visualize_prediction, plot_delta_distribution
-from data_processing import download_and_extract_data, load_all_wavs, split_data_by_time, compute_topology_metrics
-from models import LatentFCProjector, LatentRNNProjector, LatentFourierProjector,MiddleOut, Predictor
+from data_processing import download_and_extract_data, load_all_wavs, split_data_by_time, compute_topology_metrics, unfuckify_all
+from models import LatentFCProjector, LatentRNNProjector, MiddleOut, Predictor, FeatureExtractor
 from bitstream import IdentityEncoder, ArithmeticEncoder, Bzip2Encoder, BinomialHuffmanEncoder
 import wandb
 from pycallgraph2 import PyCallGraph
@@ -26,10 +26,10 @@ class SpikeRunner(Slate_Runner):
         data_url = slate.consume(data_config, 'url')
         cut_length = slate.consume(data_config, 'cut_length', None)
         download_and_extract_data(data_url)
-        all_data = load_all_wavs('data', cut_length)
+        self.all_data = load_all_wavs('data', cut_length)
 
         split_ratio = slate.consume(data_config, 'split_ratio', 0.5)
-        self.train_data, self.test_data = split_data_by_time(all_data, split_ratio)
+        self.train_data, self.test_data = split_data_by_time(unfuckify_all(self.all_data), split_ratio)
 
         print("Reconstructing thread topology")
         self.topology_matrix = compute_topology_metrics(self.train_data)
@@ -52,12 +52,13 @@ class SpikeRunner(Slate_Runner):
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.device = device
 
+        self.feat = FeatureExtractor(**slate.consume(config, 'feature_extractor', expand=True)).to(device)
+        feature_size = self.feat.compute_output_size()
+
         if latent_projector_type == 'fc':
-            self.projector = LatentFCProjector(latent_size=latent_size, input_size=input_size, **slate.consume(config, 'latent_projector', expand=True)).to(device)
+            self.projector = LatentFCProjector(latent_size=latent_size, feature_size=feature_size, **slate.consume(config, 'latent_projector', expand=True)).to(device)
         elif latent_projector_type == 'rnn':
-            self.projector = LatentRNNProjector(latent_size=latent_size, input_size=input_size, **slate.consume(config, 'latent_projector', expand=True)).to(device)
-        elif latent_projector_type == 'fourier':
-            self.projector = LatentFourierProjector(latent_size=latent_size, input_size=input_size, **slate.consume(config, 'latent_projector', expand=True)).to(device)
+            self.projector = LatentRNNProjector(latent_size=latent_size, feature_size=feature_size, **slate.consume(config, 'latent_projector', expand=True)).to(device)
         else:
             raise Exception('No such Latent Projector')
 
@@ -284,15 +285,8 @@ class SpikeRunner(Slate_Runner):
                 all_deltas.extend((tar.cpu().numpy() - prediction.cpu().numpy()).tolist())
 
                 if self.full_compression:
-                    self.encoder.build_model(my_latent.cpu().numpy())
-                    compressed_data = self.encoder.encode(my_latent.cpu().numpy())
-                    decompressed_data = self.encoder.decode(compressed_data, len(my_latent))
-                    compression_ratio = len(my_latent) / len(compressed_data)
-                    compression_ratios.append(compression_ratio)
-
-                    if np.allclose(my_latent.cpu().numpy(), decompressed_data, atol=1e-5):
-                        exact_matches += 1
-                    total_sequences += 1
+                    raw = self.all_data
+                    comp = self.compress(raw)
 
         avg_loss = total_loss / len(self.test_data)
         tot_err = sum(errs) / len(errs)
@@ -346,6 +340,17 @@ class SpikeRunner(Slate_Runner):
         torch.save(self.middle_out.state_dict(), os.path.join(self.save_path, f"best_middle_out_epoch_{epoch+1}.pt"))
         torch.save(self.predictor.state_dict(), os.path.join(self.save_path, f"best_predictor_epoch_{epoch+1}.pt"))
         print(f"New high score! Models saved at epoch {epoch+1}.")
+
+    def compress(raw):
+        threads = unfuckify_all(raw)
+        for thread in threads:
+            # 1. featExtr
+            # 2. latentProj
+            # 3. middleOut
+            # 4. predictor
+            # 5. calc delta
+            # 6. encode
+        # 7. return
 
 if __name__ == '__main__':
     print('Initializing...')
