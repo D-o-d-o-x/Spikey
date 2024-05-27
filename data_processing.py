@@ -24,8 +24,16 @@ def load_all_wavs(data_dir, cut_length=None):
         if cut_length is not None:
             print(cut_length)
             data = data[:cut_length]
-        all_data.append(data)
+        all_data.append(unfuckify(data))
     return all_data
+
+def save_wav(file_path, data, sample_rate=19531):
+    wavfile.write(file_path, sample_rate, data)
+
+def save_all_wavs(output_dir, all_data, input_filenames):
+    for data, filename in zip(all_data, input_filenames):
+        output_file_path = os.path.join(output_dir, filename)
+        save_wav(output_file_path, refuckify(data))
 
 def compute_topology_metrics(data):
     num_leads = len(data)
@@ -46,3 +54,23 @@ def split_data_by_time(data, split_ratio=0.5):
         train_data.append(lead[:split_idx])
         test_data.append(lead[split_idx:])
     return train_data, test_data
+
+def unfuckify(nums):
+    return np.round((nums + 33) / 64).astype(int)
+
+# The released dataset is 10bit resolution encoded in a 16bit range with a completely fucked up mapping, which we have to replicate for lossless fml
+def refuckify(nums):
+    n = np.round((nums * 64) - 32).astype(int)
+    n[n >= 32] -= 1
+    n[n >= 160] -= 1
+    n[n >= 222] -= -1
+
+    for i in [543, 1568, 2657, 3682, 4707, 5732, 6821, 7846, 8871, 9896, 10921, 12010, 13035, 14060, 15085, 16174, 17199, 18224, 19249, 20338, 21363, 22388, 23413, 24502, 25527, 26552, 27577, 28666, 29691, 30716, 31741]:
+        n[n >= i] -= -1
+        n[n <= -(i+1)] -= 1
+
+    n[n <= -32742] -= 3
+    n[n <= -32770] -= -2
+    n[n <= -32832] -= -65599
+    
+    return n
