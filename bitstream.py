@@ -3,6 +3,7 @@ import heapq
 from abc import ABC, abstractmethod
 from arithmetic_compressor import AECompressor
 from arithmetic_compressor.models import StaticModel
+import numpy as np
 
 class BaseEncoder(ABC):
     @abstractmethod
@@ -86,10 +87,8 @@ class BinomialHuffmanEncoder(BaseEncoder):
         return codebook
 
     def build_model(self, data):
-        # Number of possible 10-bit integers (0 to 1023)
-        num_symbols = 1024
+        num_symbols = 2**10
 
-        # Mean and standard deviation for a binomial distribution centered around 0
         mean = (num_symbols - 1) / 2
         std_dev = math.sqrt(num_symbols / 4)
 
@@ -119,3 +118,34 @@ class BinomialHuffmanEncoder(BaseEncoder):
         # The root of the Huffman tree
         self.root = heapq.heappop(heap)
         self.codebook = self._generate_codes(self.root)
+
+class RiceEncoder(BaseEncoder):
+    def encode(self, data):
+        data = np.array(data).astype(int)
+        q = data // self.m
+        r = data % self.m
+
+        encoded_data = []
+        for qi, ri in zip(q, r):
+            encoded_data.append('1' * qi + '0' + format(ri, f'0{self.k}b'))
+        
+        return ''.join(encoded_data)
+
+    def decode(self, encoded_data):
+        decoded_output = []
+        i = 0
+        while i < len(encoded_data):
+            q = 0
+            while encoded_data[i] == '1':
+                q += 1
+                i += 1
+            i += 1  # skip the '0'
+            r = int(encoded_data[i:i + self.k], 2)
+            i += self.k
+            decoded_output.append(q * self.m + r)
+        
+        return np.array(decoded_output)
+
+    def build_model(self, data, k=3):
+        self.k = k
+        self.m = 1 << k
