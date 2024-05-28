@@ -70,7 +70,7 @@ class FeatureExtractor(nn.Module):
                 size += length
             elif transform[0] == 'fourier':
                 _, length = transform
-                size += length * 2  # Fourier transform outputs both real and imaginary parts
+                size += length * 2
             elif transform[0] == 'wavelet':
                 _, wavelet_type, length = transform
                 # Find the true size of the wavelet coefficients
