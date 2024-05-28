@@ -7,12 +7,9 @@ feature_extractor:
       length: 8  # Number of last samples to pass directly. Use full input size if set to null.
     - type: 'fourier'  # Apply Fourier transform to the input data.
       length: null  # Use full input size if set to null. Fourier transform outputs both real and imaginary parts, doubling the size. (Computationally expensive)
-    - type: 'wavelet'  # Apply selected wavelet transform to the input data.
-      wavelet_type: 'haar'  # Haar wavelet is simple and fast, but may not capture detailed features well.
-      length: null  # Use full input size if set to null.
-    - type: 'wavelet'
-      wavelet_type: 'cgau1'  # Complex Gaussian wavelets are used for complex-valued signal analysis and capturing phase information.
-      length: null  # Use full input size if set to null.
+    - type: 'wavelet' # (Pro Tip: Discrete Meyer are great for recognizing spikes)
+      wavelet_type: 'dmey'  # Discrete Meyer wavelets offer good frequency localization, ideal for signals with oscillatory components.
+      length: null  # Use full input size if set to null. (Computationally expensive)
     - type: 'wavelet'
       wavelet_type: 'db1'  # Daubechies wavelets provide a balance between time and frequency localization.
       length: null  # Use full input size if set to null. (Computationally expensive)
@@ -29,11 +26,11 @@ feature_extractor:
       wavelet_type: 'rbio1.3'  # Reverse Biorthogonal wavelets are similar to Biorthogonal but optimized for different applications.
       length: null  # Use full input size if set to null. (Computationally expensive)
     - type: 'wavelet'
-      wavelet_type: 'dmey'  # Discrete Meyer wavelets offer good frequency localization, ideal for signals with oscillatory components.
-      length: null  # Use full input size if set to null. (Computationally expensive)
+      wavelet_type: 'haar'  # Haar wavelet is simple and fast, but may not capture detailed features well.
+      length: null  # Use full input size if set to null.
     - type: 'wavelet'
-      wavelet_type: 'morl'  # Morlet wavelets are useful for time-frequency analysis due to their Gaussian-modulated sinusoid shape.
-      length: null  # Use full input size if set to null. (Computationally expensive)
+      wavelet_type: 'cgau1'  # Complex Gaussian wavelets are used for complex-valued signal analysis and capturing phase information.
+      length: null  # Use full input size if set to null.
 
 latent_projector:
   type: 'fc'  # Type of latent projector: 'fc', 'rnn', 'fourier'
@@ -81,7 +78,7 @@ profiler:
 ---
 
 name: DEFAULT
-project: Spikey_2
+project: Spikey_3
 
 slurm:
   name: 'Spikey_{config[name]}'
@@ -138,239 +135,19 @@ training:
   eval_freq: 8
   save_path: models
   peer_gradients_factor: 0.25
-  value_scale: 1000
+  value_scale: 1
   device: cpu
 
 middle_out:
   residual: false
 ---
-name: FC
+name: FC_smol_master6
 import: $
 
 feature_extractor:
-  input size: 10
+  input_size: 195
   transforms:
-    - type: 'identity'
-
-latent_projector:
-  type: fc
-  input_size: 1953
-  latent_size: 4
-  layer_shapes: [32, 8]
-  activations: ['ReLU', 'ReLU']
-
-middle_out:
-  region_latent_size: 4
-  num_peers: 3
-  residual: true
-
-predictor:
-  layer_shapes: [3]
-  activations: ['ReLU']
-
-training:
-  epochs: 1024
-  batch_size: 32
-  num_batches: 1
-  learning_rate: 0.01
----
-name: FC_AblLR
-import: $
-
-latent_projector:
-  type: fc
-  input_size: 1953
-  latent_size: 4
-  layer_shapes: [32, 8]
-  activations: ['ReLU', 'ReLU']
-
-middle_out:
-  region_latent_size: 4
-  num_peers: 3
-  residual: true
-
-predictor:
-  layer_shapes: [3]
-  activations: ['ReLU']
-
-training:
-  epochs: 1024
-  batch_size: 32
-  num_batches: 1
-  learning_rate: 0.01
-  device: cpu
-
-grid:
-  training.learning_rate: [0.1, 0.01, 0.001, 0.0001]
----
-name: RNN
-import: $
-
-latent_projector:
-  type: rnn
-  input_size: 1953
-  latent_size: 4
-  rnn_hidden_size: 3
-  rnn_num_layers: 2
-
-middle_out:
-  region_latent_size: 4
-  num_peers: 3
-  residual: true
-
-predictor:
-  layer_shapes: [3]
-  activations: ['ReLU']
-
-training:
-  epochs: 1024
-  batch_size: 32
-  num_batches: 2
-  learning_rate: 0.01
----
-name: FOURIER
-import: $
-
-latent_projector:
-  type: fourier
-  input_size: 19531 # 1s
-  latent_size: 8
-  layer_shapes: [32, 8]
-  activations: ['ReLU', 'ReLU']
-  pass_raw_len: 1953 # 0.1s
-
-middle_out:
-  region_latent_size: 8
-  num_peers: 3
-  residual: true
-
-predictor:
-  layer_shapes: [3]
-  activations: ['ReLU']
-
-training:
-  epochs: 1024
-  batch_size: 32
-  num_batches: 16
-  learning_rate: 0.01
----
-name: FC_AblPeerGrad # Best: 0.33
-import: $
-
-latent_projector:
-  type: fc
-  input_size: 1953
-  latent_size: 4
-  layer_shapes: [32, 8]
-  activations: ['ReLU', 'ReLU']
-
-middle_out:
-  region_latent_size: 4
-  num_peers: 2
-  residual: true
-
-predictor:
-  layer_shapes: [3]
-  activations: ['ReLU']
-
-training:
-  epochs: 1024
-  batch_size: 16
-  num_batches: 1
-  learning_rate: 0.01
-  device: cpu
-
-grid:
-  training:
-    peer_gradients_factor: [0.0, 0.1, 0.25, 0.33, 0.5, 1.0]
----
-name: FC_NoPeer # Worse
-import: $
-
-latent_projector:
-  type: fc
-  input_size: 1953
-  latent_size: 4
-  layer_shapes: [32, 8]
-  activations: ['ReLU', 'ReLU']
-
-middle_out:
-  region_latent_size: 4
-  num_peers: 0
-  residual: true
-
-predictor:
-  layer_shapes: [3]
-  activations: ['ReLU']
-
-training:
-  epochs: 1024
-  batch_size: 16
-  num_batches: 1
-  learning_rate: 0.01
-  device: cpu
-
----
-name: FC_ScaleAbl # Best: 1000
-import: $
-
-latent_projector:
-  type: fc
-  input_size: 1953
-  latent_size: 4
-  layer_shapes: [32, 8]
-  activations: ['ReLU', 'ReLU']
-
-middle_out:
-  region_latent_size: 4
-  num_peers: 3
-  residual: true
-
-predictor:
-  layer_shapes: [3]
-  activations: ['ReLU']
-
-training:
-  epochs: 1024
-  batch_size: 32
-  num_batches: 1
-  learning_rate: 0.01
-  device: cpu
-
-grid:
-  training.value_scale: [1, 100, 1000, 10000]
----
-name: FC_BSAbl3 # 64 is best, everything >=64 is ok
-import: $
-
-latent_projector:
-  type: fc
-  input_size: 1953
-  latent_size: 4
-  layer_shapes: [32, 8]
-  activations: ['ReLU', 'ReLU']
-
-middle_out:
-  region_latent_size: 4
-  num_peers: 3
-  residual: true
-
-predictor:
-  layer_shapes: [3]
-  activations: ['ReLU']
-
-training:
-  epochs: 1024
-  batch_size: 32
-  num_batches: 1
-  learning_rate: 0.01
-  device: cpu
-
-grid:
-  training.batch_size: [64, 128, 256]
----
-name: FC_smol_master2
-import: $
+    - type: 'identity'  # Pass the last n samples of the input data directly.
 
 scheduler:
   reps_per_version: 8
@@ -378,7 +155,45 @@ scheduler:
 
 latent_projector:
   type: fc
-  input_size: 195
+  latent_size: 6
+  layer_shapes: [20, 6]
+  activations: ['ReLU', 'ReLU']
+
+middle_out:
+  region_latent_size: 6
+  num_peers: 3
+  residual: true
+
+predictor:
+  layer_shapes: [3]
+  activations: ['ReLU']
+
+training:
+  epochs: 10000
+  batch_size: 32
+  num_batches: 1
+  learning_rate: 0.01
+  device: cpu
+  eval_freq: 16
+---
+name: Smol_Feat_fourier
+import: $
+
+feature_extractor:
+  input_size: 1953 # (=0.1s)
+  transforms:
+    - type: fourier
+    #- type: 'wavelet'
+    #  wavelet_type: 'haar' # 'db1' # 'sym2', 'coif1', 'bior1.3', 'rbio1.3', 'dmey', 'morl', 'haar', 'cgau1'
+    - type: identity
+      length: 195
+
+scheduler:
+  reps_per_version: 1
+  agents_per_job: 1
+
+latent_projector:
+  type: fc
   latent_size: 4
   layer_shapes: [20, 6]
   activations: ['ReLU', 'ReLU']
@@ -399,15 +214,26 @@ training:
   learning_rate: 0.01
   device: cpu
 ---
-name: FC_smolTanh
+name: Smol_Feat_db1_1
 import: $
+
+feature_extractor:
+  input_size: 1953 # (=0.1s)
+  transforms:
+    - type: 'wavelet'
+      wavelet_type: 'db1'  # 'sym2', 'coif1', 'bior1.3', 'rbio1.3', 'dmey', 'morl', 'haar', 'cgau1'
+    - type: identity
+      length: 195
+
+scheduler:
+  reps_per_version: 1
+  agents_per_job: 1
 
 latent_projector:
   type: fc
-  input_size: 195
   latent_size: 4
   layer_shapes: [20, 6]
-  activations: ['Tanh', 'Tanh']
+  activations: ['ReLU', 'ReLU']
 
 middle_out:
   region_latent_size: 4
@@ -416,51 +242,183 @@ middle_out:
 
 predictor:
   layer_shapes: [2]
-  activations: ['Tanh']
+  activations: ['ReLU']
 
 training:
-  epochs: 1024
+  epochs: 10000
   batch_size: 32
   num_batches: 1
   learning_rate: 0.01
   device: cpu
 ---
-name: FOURIER_thin
+name: Smol_Feat_sym2_1
 import: $
 
+feature_extractor:
+  input_size: 1953 # (=0.1s)
+  transforms:
+    - type: 'wavelet'
+      wavelet_type: 'sym2'
+    - type: identity
+      length: 195
+
+scheduler:
+  reps_per_version: 1
+  agents_per_job: 1
+
 latent_projector:
-  type: fourier
-  input_size: 1953 # 0.1s
+  type: fc
   latent_size: 4
-  layer_shapes: [32, 8]
+  layer_shapes: [20, 6]
   activations: ['ReLU', 'ReLU']
-  pass_raw_len: 195 # 0.01s
 
 middle_out:
   region_latent_size: 4
-  num_peers: 3
+  num_peers: 2
   residual: true
 
 predictor:
-  layer_shapes: [3]
+  layer_shapes: [2]
   activations: ['ReLU']
 
 training:
-  epochs: 1024
+  epochs: 10000
   batch_size: 32
   num_batches: 1
   learning_rate: 0.01
+  device: cpu
 ---
-name: FOURIER_thicc
+name: Smol_Feat_coif1_1
 import: $
 
+feature_extractor:
+  input_size: 1953 # (=0.1s)
+  transforms:
+    - type: 'wavelet'
+      wavelet_type: 'coif1'
+    - type: identity
+      length: 195
+
+scheduler:
+  reps_per_version: 1
+  agents_per_job: 1
+
 latent_projector:
-  type: fourier
-  input_size: 1953 # 0.1s
-  latent_size: 8
-  layer_shapes: [32, 8]
+  type: fc
+  latent_size: 4
+  layer_shapes: [20, 6]
   activations: ['ReLU', 'ReLU']
-  pass_raw_len: 195 # 0.01s
+
+middle_out:
+  region_latent_size: 4
+  num_peers: 2
+  residual: true
+
+predictor:
+  layer_shapes: [2]
+  activations: ['ReLU']
+
+training:
+  epochs: 10000
+  batch_size: 32
+  num_batches: 1
+  learning_rate: 0.01
+  device: cpu
+---
+name: Smol_Feat_haar_1
+import: $
+
+feature_extractor:
+  input_size: 1953 # (=0.1s)
+  transforms:
+    - type: 'wavelet'
+      wavelet_type: 'haar'
+    - type: identity
+      length: 195
+
+scheduler:
+  reps_per_version: 1
+  agents_per_job: 1
+
+latent_projector:
+  type: fc
+  latent_size: 4
+  layer_shapes: [20, 6]
+  activations: ['ReLU', 'ReLU']
+
+middle_out:
+  region_latent_size: 4
+  num_peers: 2
+  residual: true
+
+predictor:
+  layer_shapes: [2]
+  activations: ['ReLU']
+
+training:
+  epochs: 10000
+  batch_size: 32
+  num_batches: 1
+  learning_rate: 0.01
+  device: cpu
+---
+name: Smol_Feat_dmey_1
+import: $
+
+feature_extractor:
+  input_size: 1953 # (=0.1s)
+  transforms:
+    - type: 'wavelet'
+      wavelet_type: 'dmey'
+    - type: identity
+      length: 195
+
+scheduler:
+  reps_per_version: 1
+  agents_per_job: 1
+
+latent_projector:
+  type: fc
+  latent_size: 4
+  layer_shapes: [20, 6]
+  activations: ['ReLU', 'ReLU']
+
+middle_out:
+  region_latent_size: 4
+  num_peers: 2
+  residual: true
+
+predictor:
+  layer_shapes: [2]
+  activations: ['ReLU']
+
+training:
+  epochs: 10000
+  batch_size: 32
+  num_batches: 1
+  learning_rate: 0.01
+  device: cpu
+---
+name: Proto_1
+import: $
+
+feature_extractor:
+  input_size: 1953 # (=0.1s)
+  transforms:
+    - type: 'wavelet'
+      wavelet_type: 'dmey'
+    - type: identity
+      length: 195
+
+scheduler:
+  reps_per_version: 8
+  agents_per_job: 8
+
+latent_projector:
+  type: fc
+  latent_size: 8
+  layer_shapes: [24, 12]
+  activations: ['ReLU', 'ReLU']
 
 middle_out:
   region_latent_size: 8
@@ -472,120 +430,43 @@ predictor:
   activations: ['ReLU']
 
 training:
-  epochs: 1024
+  epochs: 10000
   batch_size: 32
   num_batches: 1
   learning_rate: 0.01
+  device: cpu
+
+evaluation:
+  full_compression: true
 ---
-name: FC_master3
+name: Proto_2
 import: $
 
+feature_extractor:
+  input_size: 1953 # (=0.1s)
+  transforms:
+    - type: 'wavelet'
+      wavelet_type: 'dmey'
+    - type: identity
+      length: 195
+
 scheduler:
-  reps_per_version: 8
-  agents_per_job: 8
+  reps_per_version: 4
+  agents_per_job: 4
 
 latent_projector:
   type: fc
-  input_size: 1953
-  latent_size: 4
-  layer_shapes: [32, 8]
+  latent_size: 8
+  layer_shapes: [24, 12]
   activations: ['ReLU', 'ReLU']
 
 middle_out:
-  region_latent_size: 4
+  region_latent_size: 8
   num_peers: 3
   residual: true
 
 predictor:
-  layer_shapes: [3]
-  activations: ['ReLU']
-
-training:
-  epochs: 1024
-  batch_size: 32
-  num_batches: 1
-  learning_rate: 0.01
----
-name: FC_master_single
-import: $
-
-scheduler:
-  reps_per_version: 1
-  agents_per_job: 1
-
-latent_projector:
-  type: fc
-  input_size: 1953
-  latent_size: 4
-  layer_shapes: [32, 8]
-  activations: ['ReLU', 'ReLU']
-
-middle_out:
-  region_latent_size: 4
-  num_peers: 3
-  residual: true
-
-predictor:
-  layer_shapes: [3]
-  activations: ['ReLU']
-
-training:
-  epochs: 1024
-  batch_size: 32
-  num_batches: 1
-  learning_rate: 0.01
----
-name: debug
-import: $
-
-scheduler:
-  reps_per_version: 1
-  agents_per_job: 1
-
-latent_projector:
-  type: fc
-  input_size: 1953
-  latent_size: 4
-  layer_shapes: [32, 8]
-  activations: ['ReLU', 'ReLU']
-
-middle_out:
-  region_latent_size: 4
-  num_peers: 3
-  residual: true
-
-predictor:
-  layer_shapes: [3]
-  activations: ['ReLU']
-
-training:
-  epochs: 1024
-  batch_size: 32
-  num_batches: 1
-  learning_rate: 0.01
----
-name: FOURIER_smol_master
-import: $
-
-scheduler:
-  reps_per_version: 8
-  agents_per_job: 8
-
-latent_projector:
-  type: fourier
-  input_size: 195
-  latent_size: 4
-  layer_shapes: [20, 6]
-  activations: ['ReLU', 'ReLU']
-  pass_raw_len: 20 # 0.001s
-
-middle_out:
-  region_latent_size: 4
-  num_peers: 2
-  residual: true
-
-predictor:
-  layer_shapes: [2]
+  layer_shapes: [4]
   activations: ['ReLU']
 
 training:
@@ -594,3 +475,259 @@ training:
   num_batches: 1
   learning_rate: 0.01
   device: cpu
+
+bitstream_encoding:
+  type: rice
+
+evaluation:
+  full_compression: true
+---
+name: Proto_Light_0
+import: $
+
+feature_extractor:
+  input_size: 1953 # (=0.1s)
+  transforms:
+    - type: identity
+      length: 195
+
+scheduler:
+  reps_per_version: 8
+  agents_per_job: 8
+
+latent_projector:
+  type: fc
+  latent_size: 8
+  layer_shapes: [24, 12]
+  activations: ['ReLU', 'ReLU']
+
+middle_out:
+  region_latent_size: 8
+  num_peers: 3
+  residual: true
+
+predictor:
+  layer_shapes: [4]
+  activations: ['ReLU']
+
+training:
+  epochs: 10000
+  batch_size: 32
+  num_batches: 1
+  learning_rate: 0.01
+  device: cpu
+---
+name: Proto_3_Light_SmolInp
+import: $
+
+feature_extractor:
+  input_size: 1953 # (=0.1s)
+  transforms:
+    - type: identity
+      length: 19
+
+scheduler:
+  reps_per_version: 2
+  agents_per_job: 2
+
+latent_projector:
+  type: fc
+  latent_size: 8
+  layer_shapes: [24, 12]
+  activations: ['ReLU', 'ReLU']
+
+middle_out:
+  region_latent_size: 8
+  num_peers: 3
+  residual: true
+
+predictor:
+  layer_shapes: [4]
+  activations: ['ReLU']
+
+training:
+  epochs: 10000
+  batch_size: 32
+  num_batches: 1
+  learning_rate: 0.01
+  device: cpu
+
+bitstream_encoding:
+  type: rice
+
+evaluation:
+  full_compression: true
+---
+name: Proto_3_Light_HugeInp
+import: $
+
+feature_extractor:
+  input_size: 1953 # (=0.1s)
+  transforms:
+    - type: identity
+      length: 1953
+
+scheduler:
+  reps_per_version: 2
+  agents_per_job: 2
+
+latent_projector:
+  type: fc
+  latent_size: 8
+  layer_shapes: [24, 12]
+  activations: ['ReLU', 'ReLU']
+
+middle_out:
+  region_latent_size: 8
+  num_peers: 3
+  residual: true
+
+predictor:
+  layer_shapes: [4]
+  activations: ['ReLU']
+
+training:
+  epochs: 10000
+  batch_size: 32
+  num_batches: 1
+  learning_rate: 0.01
+  device: cpu
+
+bitstream_encoding:
+  type: rice
+  k: 2
+
+evaluation:
+  full_compression: true
+---
+name: Proto_3_Smol
+import: $
+
+feature_extractor:
+  input_size: 195 # (=0.01s)
+  transforms:
+    - type: 'wavelet'
+      wavelet_type: 'dmey'
+    - type: identity
+      length: 19
+
+scheduler:
+  reps_per_version: 2
+  agents_per_job: 2
+
+latent_projector:
+  type: fc
+  latent_size: 8
+  layer_shapes: [24, 12]
+  activations: ['ReLU', 'ReLU']
+
+middle_out:
+  region_latent_size: 8
+  num_peers: 3
+  residual: true
+
+predictor:
+  layer_shapes: [4]
+  activations: ['ReLU']
+
+training:
+  epochs: 10000
+  batch_size: 32
+  num_batches: 1
+  learning_rate: 0.01
+  device: cpu
+
+bitstream_encoding:
+  type: rice
+  k: 2
+
+evaluation:
+  full_compression: true
+---
+name: Proto_2_k2
+import: $
+
+feature_extractor:
+  input_size: 1953 # (=0.1s)
+  transforms:
+    - type: 'wavelet'
+      wavelet_type: 'dmey'
+    - type: identity
+      length: 195
+
+scheduler:
+  reps_per_version: 2
+  agents_per_job: 2
+
+latent_projector:
+  type: fc
+  latent_size: 8
+  layer_shapes: [24, 12]
+  activations: ['ReLU', 'ReLU']
+
+middle_out:
+  region_latent_size: 8
+  num_peers: 3
+  residual: true
+
+predictor:
+  layer_shapes: [4]
+  activations: ['ReLU']
+
+training:
+  epochs: 10000
+  batch_size: 32
+  num_batches: 1
+  learning_rate: 0.01
+  device: cpu
+
+bitstream_encoding:
+  type: rice
+  k: 2
+
+evaluation:
+  full_compression: true
+---
+name: Proto_2_k4
+import: $
+
+feature_extractor:
+  input_size: 1953 # (=0.1s)
+  transforms:
+    - type: 'wavelet'
+      wavelet_type: 'dmey'
+    - type: identity
+      length: 195
+
+scheduler:
+  reps_per_version: 2
+  agents_per_job: 2
+
+latent_projector:
+  type: fc
+  latent_size: 8
+  layer_shapes: [24, 12]
+  activations: ['ReLU', 'ReLU']
+
+middle_out:
+  region_latent_size: 8
+  num_peers: 3
+  residual: true
+
+predictor:
+  layer_shapes: [4]
+  activations: ['ReLU']
+
+training:
+  epochs: 10000
+  batch_size: 32
+  num_batches: 1
+  learning_rate: 0.01
+  device: cpu
+
+bitstream_encoding:
+  type: rice
+  k: 4
+
+evaluation:
+  full_compression: true
