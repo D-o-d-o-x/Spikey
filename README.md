@@ -10,7 +10,13 @@ This repository contains a solution for the [Neuralink Compression Challenge](ht
 
 ## Challenge Overview
 
-The Neuralink N1 implant generates approximately 200 Mbps of electrode data (1024 electrodes @ 20 kHz, 10-bit resolution) and can transmit data wirelessly at about 1 Mbps. This means a compression ratio of over 200x is required. The compression must run in real-time (< 1 ms) and consume low power (< 10 mW, including radio).
+The Neuralink N1 implant generates approximately 200 Mbps of electrode data from 1024 electrodes, each sampling at 20 kHz with a 10-bit resolution. This data is recorded from the motor cortex of a non-human primate while playing video games. Given the implant's wireless transmission capability of about 1 Mbps, achieving a compression ratio of over 200x is essential.
+
+#### Key Requirements:
+
+- **Real-time Compression**: The compression algorithm must operate in less than 1 millisecond to ensure real-time performance.
+- **Low Power Consumption**: The total power consumption, including the radio, must be below 10 milliwatts.
+- **Lossless Compression**: The compression must be lossless to maintain data integrity.
 
 ## Data Analysis
 
@@ -28,13 +34,13 @@ The main workhorse of our compression approach is a predictive model running bot
 
 We separate the predictive model into four parts:
 
-1. **Feature Extraction**: This module processes a given history of readings for a single thread and extracts relevant features (using mostly wavelet and Fourier transforms). Highly configurable, this module performs the heavy lifting of signal analysis, allowing shallow neural networks to handle the rest. (Full disclosure: I have no idea what half of the implemented wavelet transforms actually do. We just throw anything sensible at the problem and will narrow down later; making effective use of the fact that 'fuck around' and 'find out' are positively correlated.)
+1. **Feature Extraction**: This module processes a given history of readings for a single thread and extracts relevant features (using mostly wavelet and Fourier transforms). Highly configurable, this module performs the heavy lifting of signal analysis, allowing shallow neural networks to handle the rest.
 
 2. **Latent Projector**: This takes the feature vectors and projects them into a latent space. The latent projector can be configured as a fully connected network or an RNN (LSTM) with an arbitrary shape.
 
-3. **[MiddleOut](https://www.youtube.com/watch?v=l49MHwooaVQ)**: For each thread, this module performs message passing according to the thread topology. Their latent representations along with their distance metrics are used to generate region latent representations. This is done by training a fully connected layer to map from (our_latent, their_latent, metric) -> region_latent and then averaging over all region_latent values to get the final representation.
+3. **[MiddleOut](https://www.youtube.com/watch?v=l49MHwooaVQ)**: For each thread, this module performs message passing according to the thread topology. Their latent representations along with their distance metrics are used to generate region latent representations.
 
-4. **Predictor**: This module takes the new latent representation from the MiddleOut module and predicts the next timestep. The goal is to minimize the prediction error during training. It can be configured to be an FCNN of arbitrary shape.
+4. **Predictor**: This module takes the region latent representation from the MiddleOut module and predicts the next timestep. The goal is to minimize the prediction error during training. It can be configured to be an FCNN of arbitrary shape.
 
 The neural networks used are rather small, making it possible to meet the latency and power requirements if implemented more efficiently. (Some of the available feature extractors are somewhat expensive thought).
 
@@ -42,7 +48,7 @@ If we were to give up on lossless compression, one could expand MiddleOut to for
 
 ### 3 - Efficient Bitstream Encoding
 
-The best performing available bitstream encoder is Rice, but we also provide a prebuild Hoffman based on a binomial prior and some others.
+The best performing available bitstream encoder is Rice, but we also provide a prebuild Huffman based on a binomial prior and some others.
 
 Check the `config.yaml` for a bit more info on these.
 
@@ -67,10 +73,12 @@ The provided eval.sh script is also somewhat flawed (as in: not aligned with wha
 ## Preliminary Results
 Current best: **4.445** (not counting encoder / decoder size, just data)
 
-Theoretical max via Shannon: [3.439](https://x.com/usrbinishan/status/1794948522112151841), best found online: [3.35](https://github.com/phoboslab/neuralink_brainwire). (Shannon assumptions don't hold for this algo, so max does not apply)
+Theoretical max via Shannon: [3.439](https://x.com/usrbinishan/status/1794948522112151841), best found online: [3.35](https://github.com/phoboslab/neuralink_brainwire). (Shannon assumptions don't hold for this algo, so max does not apply)  
 Config Outline: Meyer Wavelets for feature extraction (are great at recognizing spikes). Rice as bitstream encoder with k=2. 8D Latents. Residual skip-con in MiddleOut. (See `Proto_2_k2` in `config.yaml`)
 
 That result is actually impressive as fuck (maybe not if one expects 200x). Our predictor works amazingly well. The decompressor is not yet fully implemented so I'm unable to ensure there are no bugs eating information. I'm also currently ignoring compression ratios for the first 0.1s of data, since the NNs window is not yet filled then. Need to either train the NNs to be able to handle that or use a more naive compression method for that timeframe. Also, this is only on 20% of dataset (test set to prevent overfitting on training set).
+
+The presented python implementation should be regarded as a POC; the used networks are rather small, making them trivially usable on-chip if implemented more efficiently. Only the discrete Meyer wavelet convolution could be somewhat difficult to pull off, but the chips contain hardware for spike detection and analysis (according to information released by Neuralink), so these could be used instead. There is no lookahead of any kind, so we can send each new reading off once it went though the math. Compression and decompression has to be performed jointly over all threads, since we pass messages between threads during MiddleOut.
 
 ## TODO
 
@@ -83,6 +91,9 @@ That result is actually impressive as fuck (maybe not if one expects 200x). Our 
 - implement full compression / decompression
 
 - add CNN based feature extractor
+
+- make usable with eval.sh
+
 
 ## Installation
 
