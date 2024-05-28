@@ -6,13 +6,15 @@
 
 This repository contains a solution for the [Neuralink Compression Challenge](https://content.neuralink.com/compression-challenge/README.html). The challenge involves compressing raw electrode recordings from a Neuralink implant. These recordings are taken from the motor cortex of a non-human primate while playing a video game.
 
+**TL;DR;** We achieve a lossless compression ratio of **4.445** using a predictive model that employs discrete Meyer wavelet convolution for signal decomposition, inter-thread message passing to account for underlying brain region activity, and Rice coding for efficient entropy encoding. We believe this to be close to the optimum achievable with lossless compression and argue against pursuing lossless compression as a further goal.
+
 ## Challenge Overview
 
 The Neuralink N1 implant generates approximately 200 Mbps of electrode data (1024 electrodes @ 20 kHz, 10-bit resolution) and can transmit data wirelessly at about 1 Mbps. This means a compression ratio of over 200x is required. The compression must run in real-time (< 1 ms) and consume low power (< 10 mW, including radio).
 
 ## Data Analysis
 
-The `analysis.ipynb` notebook contains a detailed analysis of the data. We found that there is sometimes significant cross-correlation between the different threads, so we find it vital to use this information for better compression. This cross-correlation allows us to improve the accuracy of our predictions and reduce the overall amount of data that needs to be transmitted.
+The `analysis.ipynb` notebook contains a detailed analysis of the data. We found that there is sometimes significant cross-correlation between the different threads, so we find it vital to use this information for better compression. This cross-correlation allows us to improve the accuracy of our predictions and reduce the overall amount of data that needs to be transmitted. We sometimes even observe certain 'structures' on multiple threads, but shifted a couple steps in time (might that not be handy for compression?).
 
 ## Algorithm Overview
 
@@ -34,15 +36,18 @@ We separate the predictive model into four parts:
 
 4. **Predictor**: This module takes the new latent representation from the MiddleOut module and predicts the next timestep. The goal is to minimize the prediction error during training. It can be configured to be an FCNN of arbitrary shape.
 
-The neural networks used are rather small, making it possible to meet the latency and power requirements if implemented more efficiently.
+The neural networks used are rather small, making it possible to meet the latency and power requirements if implemented more efficiently. (Some of the available feature extractors are somewhat expensive thought).
 
 If we were to give up on lossless compression, one could expand MiddleOut to form a joint latent over all threads and transmit that.
 
 ### 3 - Efficient Bitstream Encoding
 
-Based on an expected distribution of deltas that have to be transmitted, an efficient Huffman-like binary format is used for encoding the data.
+The best performing available bitstream encoder is Rice, but we also provide a prebuild Hoffman based on a binomial prior and some others.
+
+Check the `config.yaml` for a bit more info on these.
 
 ## Discussion
+
 ### On Lossless 200x Compression
 
 Expecting a 200x compression ratio is ludicrous, as it would mean transmitting only 1 bit per 20 data points. Given the high entropy of the readings, this is an absurd goal. Anyone who thinks lossless 200x compression is remotely feasible has a woefully inadequate grasp of information theory. Please, do yourself a favor and read Shannon’s paper.
@@ -59,12 +64,25 @@ Why is the dataset provided not 10-bit if the readings are? They are all 16-bit.
 
 The provided eval.sh script is also somewhat flawed (as in: not aligned with what should be optimized for), since it counts the size of the compressor and decompressor as part of the transmitted data. Especially the decompressor part makes no sense. It also makes it impossible to compress data from multiple threads together, which is required for the free lunch we can get from topological reconstruction.
 
+## Preliminary Results
+Current best: **4.445** (not counting encoder / decoder size, just data)
+
+Theoretical max via Shannon: [3.439](https://x.com/usrbinishan/status/1794948522112151841), best found online: [3.35](https://github.com/phoboslab/neuralink_brainwire). (Shannon assumptions don't hold for this algo, so max does not apply)
+Config Outline: Meyer Wavelets for feature extraction (are great at recognizing spikes). Rice as bitstream encoder with k=2. 8D Latents. Residual skip-con in MiddleOut. (See `Proto_2_k2` in `config.yaml`)
+
+That result is actually impressive as fuck (maybe not if one expects 200x). Our predictor works amazingly well. The decompressor is not yet fully implemented so I'm unable to ensure there are no bugs eating information. I'm also currently ignoring compression ratios for the first 0.1s of data, since the NNs window is not yet filled then. Need to either train the NNs to be able to handle that or use a more naive compression method for that timeframe. Also, this is only on 20% of dataset (test set to prevent overfitting on training set).
+
 ## TODO
 
-- Finalize new Feature Extractor Implementations
-- Our flagship bitstream encoder builds an optimal Huffman tree assuming the deltas are binomially distributed. This should be updated when we know a more precise approximation of the delta distribution.
-- Tune HPs / Benchmark
+- Tune the BinomialHuffman, maybe we can beat rice as the bistream encoder?
+
+- Tune HPs / Benchmark networks
+
 - cli for compress / decompress
+
+- implement full compression / decompression
+
+- add CNN based feature extractor
 
 ## Installation
 
@@ -101,6 +119,6 @@ The icon used in this repository is a combination of the Pied Piper logo from th
 
 ## License
 
-This work is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0). For commercial use, please contact me at [mail@dominik-roth.eu](mailto:mail@dominik-roth.eu).
+This work is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0). For commercial use, including commercial usage of derived works, please contact me at [mail@dominik-roth.eu](mailto:mail@dominik-roth.eu).
 
 You can view the full text of the license [here](LICENSE).
