@@ -58,19 +58,26 @@ Check the `config.yaml` for a bit more info on these.
 
 Expecting a 200x compression ratio is ludicrous, as it would mean transmitting only 1 bit per 20 data points. Given the high entropy of the readings, this is an absurd goal. Anyone who thinks lossless 200x compression is remotely feasible has a woefully inadequate grasp of information theory. Please, do yourself a favor and read Shannon’s paper.
 
-Furthermore, there's no need for lossless compression. These readings feed into an ML model to extract intent, and any such encoder inherently reduces information content with each layer ('intelligence is the ability to disregard irrelevant information'). Instead, compression should be regarded as an integral part of the ML pipeline for intent extraction. It should be allowed to be lossy, with the key being to define the loss metric not by information loss in the input space, but rather in the latent space of the pipeline.
-
 Let's see how far we can get with the approach presented here...
 
 ### On fucked up wav files
 
 Why is the dataset provided not 10-bit if the readings are? They are all 16-bit. And the last 6 bits are not all zeros. We know they can't encode sensible information when the readings are only 10-bit, but we also can't just throw them away since they do contain something. We also observe that all possible values the data points can take on are separated by 64 or 63 (64 would make sense; 63 very much does not). (See `fucked_up_wavs.py`)
 
-### On Evaluation
+### Speculation on the Challenge Background
 
-The provided eval.sh script is also somewhat flawed (as in: not aligned with what should be optimized for), since it counts the size of the compressor and decompressor as part of the transmitted data. Especially the decompressor part makes no sense. It also makes it impossible to compress data from multiple threads together, which is required for the free lunch we can get from topological reconstruction.
+Neuralink designed the N1 implant with on-chip spike detection and analysis capabilities, assuming these spike descriptions would suffice for intent recognition and could be transmitted via a low bandwidth 1 Mbps connection, with the rest being noise. However, during the PRIME study with 'Noland Arbaugh', the implant's threads moved out of the brain more than expected, leading to a degradation of intent recognition capabilities.
+
+In response, Neuralink tried a hail mary: They ignored the electrodes no longer in the brain, skipped on-device spike analysis, and transmitted the remaining data as losslessly as possible. Remarkably, using advanced ML algorithms, they improved intent detection significantly, outperforming the old pipeline with all electrodes intact.
+
+This led to a new strategy: Discard spike analysis and use the new algorithm on all electrode data in future trials. However, the vast amount of data generated couldn't be transmitted using the existing bandwidth. So Neuralink turned to the internet for solutions, essentially crowd-sourcing their problem-solving because they couldn't figure it out themselves.
+
+The new ML algorithm's effectiveness at extracting valuable information from what was previously considered noise makes the goal of 200x compression even less sensible. If the new ML algorithms can extract more information, this 'true' information contained in the readings is rather incompressible.
+
+Neuralink should regard compression as part of their ML model for intent extraction. "Intelligence is the ability to disregard irrelevant information." The focus should be on lossy compression that minimizes information loss in the latent space of the ML pipeline rather than the input space. There should be no decompression step (except for entropy coding), just stay in the 'compressed' latent space. Future implants should also have increased bandwidth to support this approach.
 
 ## Preliminary Results
+
 Current best: **4.445** (not counting encoder / decoder size, just data)
 
 Theoretical max via Shannon: [3.439](https://x.com/usrbinishan/status/1794948522112151841), best found online: [3.35](https://github.com/phoboslab/neuralink_brainwire). (Shannon assumptions don't hold for this algo, so max does not apply)  
@@ -93,7 +100,6 @@ The presented python implementation should be regarded as a POC; the used networ
 - add CNN based feature extractor
 
 - make usable with eval.sh
-
 
 ## Installation
 
@@ -126,6 +132,7 @@ python main.py <config_file.yaml> <exp_name>
 ```
 
 ## Icon Attribution
+
 The icon used in this repository is a combination of the Pied Piper logo from the HBO show _Silicon Valley_ and the Neuralink logo. I do not hold any trademarks on either logo; they are owned by their respective entities.
 
 ## License
@@ -133,3 +140,4 @@ The icon used in this repository is a combination of the Pied Piper logo from th
 This work is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0). For commercial use, including commercial usage of derived works, please contact me at [mail@dominik-roth.eu](mailto:mail@dominik-roth.eu).
 
 You can view the full text of the license [here](LICENSE).
+
