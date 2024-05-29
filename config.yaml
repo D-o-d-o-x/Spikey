@@ -731,3 +731,90 @@ bitstream_encoding:
 
 evaluation:
   full_compression: true
+---
+name: Proto_3_Dec
+import: $
+
+feature_extractor:
+  input_size: 1953 # (=0.1s)
+  transforms:
+    - type: 'wavelet'
+      wavelet_type: 'dmey'
+    - type: identity
+      length: 195
+
+scheduler:
+  reps_per_version: 2
+  agents_per_job: 2
+
+latent_projector:
+  type: fc
+  latent_size: 8
+  layer_shapes: [24, 12]
+  activations: ['ReLU', 'ReLU']
+
+middle_out:
+  region_latent_size: 8
+  num_peers: 3
+  residual: true
+
+predictor:
+  layer_shapes: [4]
+  activations: ['ReLU']
+
+training:
+  epochs: 10000
+  batch_size: 32
+  num_batches: 1
+  learning_rate: 0.01
+  device: cpu
+
+bitstream_encoding:
+  type: rice
+  k: 2
+
+evaluation:
+  full_compression: true
+---
+name: Proto_4
+import: $
+
+feature_extractor:
+  input_size: 1953 # (=0.1s)
+  transforms:
+    - type: 'wavelet'
+      wavelet_type: 'dmey'
+    - type: identity
+      length: 195
+
+scheduler:
+  reps_per_version: 2
+  agents_per_job: 2
+
+latent_projector:
+  type: fc
+  latent_size: 8
+  layer_shapes: [24, 12]
+  activations: ['ReLU', 'ReLU']
+
+middle_out:
+  region_latent_size: 8
+  num_peers: 3
+  residual: true
+
+predictor:
+  layer_shapes: [4]
+  activations: ['ReLU']
+
+training:
+  epochs: 10000
+  batch_size: 32
+  num_batches: 1
+  learning_rate: 0.01
+  device: cpu
+
+bitstream_encoding:
+  type: binomHuffman
+
+evaluation:
+  full_compression: true
