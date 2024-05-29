@@ -6,7 +6,7 @@
 
 This repository contains a solution for the [Neuralink Compression Challenge](https://content.neuralink.com/compression-challenge/README.html). The challenge involves compressing raw electrode recordings from a Neuralink implant. These recordings are taken from the motor cortex of a non-human primate while playing a video game.
 
-**TL;DR;** We achieve a lossless compression ratio of **4.445** using a predictive model that employs discrete Meyer wavelet convolution for signal decomposition, inter-thread message passing to account for underlying brain region activity, and Rice coding for efficient entropy encoding. We believe this to be close to the optimum achievable with lossless compression and argue against pursuing lossless compression as a further goal.
+**TL;DR;** We achieve a lossless compression ratio of **3.513** using a predictive model that employs discrete Meyer wavelet convolution for signal decomposition, inter-thread message passing to account for underlying brain region activity, and Rice coding for efficient entropy encoding. We believe this to be close to the optimum achievable with lossless compression and argue against pursuing lossless compression as a further goal.
 
 ## Challenge Overview
 
@@ -48,9 +48,9 @@ If we were to give up on lossless compression, one could expand MiddleOut to for
 
 ### 3 - Efficient Bitstream Encoding
 
-The best performing available bitstream encoder is Rice, but we also provide a prebuild Huffman based on a binomial prior and some others.
+The best performing available bitstream encoder is a Huffman code based on a binomial prior fitted to the delta distribution, but we also provide others such as Rice.
 
-Check the `config.yaml` for a bit more info on these.
+Check the `config.yaml` for a bit more info on the architecture.
 
 ## Discussion
 
@@ -78,18 +78,14 @@ Neuralink should regard compression as part of their ML model for intent extract
 
 ## Preliminary Results
 
-Current best: **4.445** (not counting encoder / decoder size, just data)
+Current best: **3.513** (not counting encoder / decoder size, just data)
 
 Theoretical max via Shannon: [3.439](https://x.com/usrbinishan/status/1794948522112151841), best found online: [3.35](https://github.com/phoboslab/neuralink_brainwire). (Shannon assumptions don't hold for this algo, so max does not apply)  
-Config Outline: Meyer Wavelets for feature extraction (are great at recognizing spikes). Rice as bitstream encoder with k=2. 8D Latents. Residual skip-con in MiddleOut. (See `Proto_2_k2` in `config.yaml`)
-
-That result is actually impressive as fuck (maybe not if one expects 200x). Our predictor works amazingly well. The decompressor is not yet fully implemented so I'm unable to ensure there are no bugs eating information. I'm also currently ignoring compression ratios for the first 0.1s of data, since the NNs window is not yet filled then. Need to either train the NNs to be able to handle that or use a more naive compression method for that timeframe. Also, this is only on 20% of dataset (test set to prevent overfitting on training set).
+Config Outline: Meyer Wavelets for feature extraction (are great at recognizing spikes). Rice as bitstream encoder with k=2. 8D Latents. Residual skip-con in MiddleOut.
 
 The presented python implementation should be regarded as a POC; the used networks are rather small, making them trivially usable on-chip if implemented more efficiently. Only the discrete Meyer wavelet convolution could be somewhat difficult to pull off, but the chips contain hardware for spike detection and analysis (according to information released by Neuralink), so these could be used instead. There is no lookahead of any kind, so we can send each new reading off once it went though the math. Compression and decompression has to be performed jointly over all threads, since we pass messages between threads during MiddleOut.
 
 ## TODO
-
-- Tune the BinomialHuffman, maybe we can beat rice as the bistream encoder?
 
 - Tune HPs / Benchmark networks
 
@@ -100,6 +96,7 @@ The presented python implementation should be regarded as a POC; the used networ
 - add CNN based feature extractor
 
 - make usable with eval.sh
+
 
 ## Installation
 
@@ -141,3 +138,6 @@ This work is licensed under a Creative Commons Attribution-NonCommercial-ShareAl
 
 You can view the full text of the license [here](LICENSE).
 
+---
+
+And always remember: Fuel on!
