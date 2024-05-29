@@ -81,7 +81,7 @@ Neuralink should regard compression as part of their ML model for intent extract
 Current best: **3.513** (not counting encoder / decoder size, just data)
 
 Theoretical max via Shannon: [3.439](https://x.com/usrbinishan/status/1794948522112151841), best found online: [3.35](https://github.com/phoboslab/neuralink_brainwire). (Shannon assumptions don't hold for this algo, so max does not apply)  
-Config Outline: Meyer Wavelets for feature extraction (are great at recognizing spikes). Rice as bitstream encoder with k=2. 8D Latents. Residual skip-con in MiddleOut.
+Config Outline: Meyer Wavelets for feature extraction (are great at recognizing spikes). 8D Latents. Residual skip-con in MiddleOut. BinomialHuffman for bistream encoding.
 
 The presented python implementation should be regarded as a POC; the used networks are rather small, making them trivially usable on-chip if implemented more efficiently. Only the discrete Meyer wavelet convolution could be somewhat difficult to pull off, but the chips contain hardware for spike detection and analysis (according to information released by Neuralink), so these could be used instead. There is no lookahead of any kind, so we can send each new reading off once it went though the math. Compression and decompression has to be performed jointly over all threads, since we pass messages between threads during MiddleOut.
 
